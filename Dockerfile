@@ -51,6 +51,11 @@ RUN docker-php-ext-configure gd --with-jpeg \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # ------------------------------------------------------------
+# 3b. Tuning OPcache untuk performa (penting di bind-mount Windows)
+# ------------------------------------------------------------
+COPY docker-config/php/opcache.ini /usr/local/etc/php/conf.d/zz-visueco-opcache.ini
+
+# ------------------------------------------------------------
 # 4. Direktori kerja aplikasi
 # ------------------------------------------------------------
 WORKDIR /var/www
