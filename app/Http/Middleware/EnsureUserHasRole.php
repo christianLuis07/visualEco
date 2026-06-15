@@ -11,10 +11,14 @@ class EnsureUserHasRole
     public function handle(Request $request, Closure $next, string $role): Response
     {
         if ($request->user()?->role !== $role) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak. Anda tidak memiliki hak akses untuk fungsi ini.',
-            ], 403);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak. Anda tidak memiliki hak akses untuk fungsi ini.',
+                ], 403);
+            }
+
+            abort(403, 'Akses ditolak.');
         }
 
         return $next($request);

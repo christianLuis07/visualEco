@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\AuthController;
 use App\Models\PointLedger;
 use App\Models\Reward;
@@ -34,4 +35,11 @@ Route::middleware('auth')->group(function (): void {
                 ->get(),
         ]);
     })->name('rewards');
+
+    // Admin routes
+    Route::prefix('admin')->middleware('role:admin')->group(function (): void {
+        Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
+        Route::post('/voucher/verify', [AdminController::class, 'verifyVoucher'])->name('admin.voucher.verify');
+        Route::patch('/voucher/{id}/complete', [AdminController::class, 'completeRedeem'])->name('admin.voucher.complete');
+    });
 });
