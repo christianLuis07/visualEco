@@ -34,6 +34,61 @@
             </div>
         </div>
 
+        {{-- ═══ KARTU STATUS MODEL AI ═══ --}}
+        @php
+            $mlInfo = $modelStats['ml_info'] ?? null;
+            $activeVersion = $modelStats['active_version'] ?? null;
+            $pendingSamples = $modelStats['pending_samples'] ?? 0;
+            $totalSamples = $modelStats['total_samples'] ?? 0;
+            $correctPred = $modelStats['correct_predictions'] ?? 0;
+            $accuracyPct = $totalSamples > 0 ? round($correctPred / $totalSamples * 100) : null;
+        @endphp
+        <div class="mb-8 rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900">Status Model AI</h2>
+                    <p class="text-xs text-slate-400">Model belajar dari konfirmasi warga</p>
+                </div>
+                <button id="btn-train" type="button"
+                    class="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:ring-offset-2 disabled:opacity-40">
+                    Latih Ulang Model
+                </button>
+            </div>
+
+            <div id="train-alert" class="mb-4 hidden rounded-lg px-4 py-3 text-sm"></div>
+
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div class="rounded-lg bg-slate-50 px-4 py-3">
+                    <p class="text-xs text-slate-400">Versi Model</p>
+                    <p class="mt-0.5 text-lg font-bold text-slate-800" id="stat-version">
+                        {{ $activeVersion ? 'v' . $activeVersion->version : 'Belum dilatih' }}
+                    </p>
+                </div>
+                <div class="rounded-lg bg-slate-50 px-4 py-3">
+                    <p class="text-xs text-slate-400">Akurasi Latih</p>
+                    <p class="mt-0.5 text-lg font-bold text-slate-800" id="stat-accuracy">
+                        {{ $activeVersion && $activeVersion->accuracy !== null ? round($activeVersion->accuracy * 100) . '%' : '—' }}
+                    </p>
+                </div>
+                <div class="rounded-lg bg-slate-50 px-4 py-3">
+                    <p class="text-xs text-slate-400">Total Data Latih</p>
+                    <p class="mt-0.5 text-lg font-bold text-slate-800">{{ number_format($totalSamples) }}</p>
+                </div>
+                <div class="rounded-lg bg-slate-50 px-4 py-3">
+                    <p class="text-xs text-slate-400">Belum Dilatih</p>
+                    <p class="mt-0.5 text-lg font-bold text-teal-600" id="stat-pending">{{ number_format($pendingSamples) }}</p>
+                </div>
+            </div>
+
+            @if($accuracyPct !== null)
+                <p class="mt-3 text-xs text-slate-500">
+                    Akurasi prediksi awal model terhadap konfirmasi warga:
+                    <span class="font-semibold text-slate-700">{{ $accuracyPct }}%</span>
+                    ({{ $correctPred }}/{{ $totalSamples }} tebakan benar)
+                </p>
+            @endif
+        </div>
+
         {{-- ═══ MAIN LAYOUT: 2 COLUMN ═══ --}}
         <div class="grid gap-6 lg:grid-cols-5">
 
@@ -333,6 +388,61 @@ document.addEventListener('DOMContentLoaded', function () {
         const parts = value.split('; ' + name + '=');
         if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
         return '';
+    }
+
+    // ─── Latih Ulang Model AI ──────────────────────────
+    const btnTrain = document.getElementById('btn-train');
+    const trainAlert = document.getElementById('train-alert');
+
+    btnTrain.addEventListener('click', async function () {
+        btnTrain.disabled = true;
+        btnTrain.textContent = 'Melatih...';
+        showTrainAlert('Model sedang dilatih. Proses ini bisa memakan waktu beberapa saat...', 'info');
+
+        try {
+            const res = await fetch('/admin/model/train', {
+                method: 'POST',
+                headers: {
+                    'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            const json = await res.json();
+
+            if (res.ok && json.success) {
+                document.getElementById('stat-version').textContent = 'v' + json.data.version;
+                document.getElementById('stat-accuracy').textContent =
+                    json.data.accuracy !== null ? Math.round(json.data.accuracy * 100) + '%' : '—';
+                document.getElementById('stat-pending').textContent = '0';
+                showTrainAlert(
+                    'Model berhasil dilatih! Versi v' + json.data.version +
+                    ' (akurasi ' + Math.round(json.data.accuracy * 100) + '%, ' +
+                    json.data.sample_count + ' sampel).', 'success');
+            } else {
+                showTrainAlert(json.message || 'Gagal melatih model.', 'error');
+            }
+        } catch (err) {
+            showTrainAlert('Tidak dapat terhubung ke server AI.', 'error');
+        } finally {
+            btnTrain.disabled = false;
+            btnTrain.textContent = 'Latih Ulang Model';
+        }
+    });
+
+    function showTrainAlert(message, type) {
+        trainAlert.textContent = message;
+        trainAlert.className = 'mb-4 rounded-lg px-4 py-3 text-sm';
+        if (type === 'error') {
+            trainAlert.classList.add('bg-red-50', 'text-red-800');
+        } else if (type === 'success') {
+            trainAlert.classList.add('bg-teal-50', 'text-teal-800');
+        } else {
+            trainAlert.classList.add('bg-amber-50', 'text-amber-800');
+        }
+        trainAlert.classList.remove('hidden');
     }
 });
 </script>

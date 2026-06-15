@@ -4,6 +4,7 @@ use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\AuthController;
 use App\Models\PointLedger;
 use App\Models\Reward;
+use App\Models\WasteCategory;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,7 +24,9 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        return view('dashboard', [
+            'categories' => WasteCategory::orderBy('id')->get(['id', 'name']),
+        ]);
     })->name('dashboard');
 
     Route::get('/rewards', function () {
@@ -41,5 +44,6 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
         Route::post('/voucher/verify', [AdminController::class, 'verifyVoucher'])->name('admin.voucher.verify');
         Route::patch('/voucher/{id}/complete', [AdminController::class, 'completeRedeem'])->name('admin.voucher.complete');
+        Route::post('/model/train', [AdminController::class, 'trainModel'])->name('admin.model.train');
     });
 });

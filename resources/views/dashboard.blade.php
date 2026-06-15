@@ -95,6 +95,45 @@
                     <p class="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Cara Penanganan</p>
                     <ul id="result-instructions" class="space-y-1.5"></ul>
                 </div>
+
+                {{-- Blok Konfirmasi: bantu AI belajar --}}
+                <div id="confirm-block" class="mt-4 border-t border-teal-100 pt-3">
+                    <p class="mb-2 text-xs font-semibold text-slate-700">
+                        Apakah kategori <span id="confirm-category-name" class="text-teal-700"></span> ini sudah benar?
+                    </p>
+                    <p class="mb-3 text-xs text-slate-400">Bantu AI belajar mengenali sampah dengan lebih akurat.</p>
+
+                    <div id="confirm-actions" class="flex flex-wrap gap-2">
+                        <button id="btn-confirm-yes" type="button"
+                            class="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-teal-700">
+                            Ya, benar
+                        </button>
+                        <button id="btn-confirm-no" type="button"
+                            class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
+                            Bukan, koreksi
+                        </button>
+                    </div>
+
+                    {{-- Dropdown koreksi (tersembunyi sampai user klik "Bukan") --}}
+                    <div id="correct-picker" class="mt-3 hidden">
+                        <label class="mb-1 block text-xs font-medium text-slate-500">Pilih kategori yang benar:</label>
+                        <div class="flex gap-2">
+                            <select id="correct-category"
+                                class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                            <button id="btn-submit-correction" type="button"
+                                class="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-teal-700">
+                                Kirim
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Pesan setelah konfirmasi --}}
+                    <p id="confirm-thanks" class="mt-3 hidden text-xs font-medium text-teal-700"></p>
+                </div>
             </div>
 
         </div>
@@ -112,7 +151,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const resultCard      = document.getElementById('result-card');
     const pointsDisplay   = document.getElementById('points-display');
 
+    // Konfirmasi belajar
+    const confirmBlock    = document.getElementById('confirm-block');
+    const confirmActions  = document.getElementById('confirm-actions');
+    const correctPicker   = document.getElementById('correct-picker');
+    const confirmThanks   = document.getElementById('confirm-thanks');
+    const btnConfirmYes   = document.getElementById('btn-confirm-yes');
+    const btnConfirmNo    = document.getElementById('btn-confirm-no');
+    const btnSubmitCorr   = document.getElementById('btn-submit-correction');
+    const correctCategory = document.getElementById('correct-category');
+
     let selectedFile = null;
+    let currentScanId = null;
+    let currentCategoryId = null;
 
     // ─── File selection & preview ───────────────────────
     imageInput.addEventListener('change', function () {
@@ -218,11 +269,81 @@ document.addEventListener('DOMContentLoaded', function () {
             list.appendChild(li);
         });
 
+        // Siapkan blok konfirmasi belajar.
+        currentScanId = data.scan_id;
+        currentCategoryId = data.category_id || null;
+        document.getElementById('confirm-category-name').textContent = data.category_name;
+        if (currentCategoryId) {
+            correctCategory.value = String(currentCategoryId);
+        }
+        confirmActions.classList.remove('hidden');
+        correctPicker.classList.add('hidden');
+        confirmThanks.classList.add('hidden');
+        confirmBlock.classList.remove('hidden');
+
         resultCard.classList.remove('hidden');
 
         pointsDisplay.textContent = data.points_balance;
 
         resetInput();
+    }
+
+    // ─── Konfirmasi belajar ─────────────────────────────
+    btnConfirmYes.addEventListener('click', function () {
+        if (!currentCategoryId) return;
+        sendConfirmation(currentCategoryId);
+    });
+
+    btnConfirmNo.addEventListener('click', function () {
+        correctPicker.classList.remove('hidden');
+        confirmActions.classList.add('hidden');
+    });
+
+    btnSubmitCorr.addEventListener('click', function () {
+        const chosen = parseInt(correctCategory.value, 10);
+        if (!chosen) return;
+        sendConfirmation(chosen);
+    });
+
+    async function sendConfirmation(categoryId) {
+        if (!currentScanId) return;
+
+        const buttons = [btnConfirmYes, btnConfirmNo, btnSubmitCorr];
+        buttons.forEach(function (b) { b.disabled = true; });
+
+        try {
+            const res = await fetch('/api/v1/scan/confirm', {
+                method: 'POST',
+                headers: {
+                    'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    scan_id: currentScanId,
+                    correct_category_id: categoryId,
+                }),
+            });
+
+            const json = await res.json();
+
+            if (res.status === 201 && json.success) {
+                confirmActions.classList.add('hidden');
+                correctPicker.classList.add('hidden');
+                confirmThanks.textContent = json.message;
+                confirmThanks.classList.remove('hidden');
+                currentScanId = null;
+            } else {
+                confirmThanks.textContent = json.message || 'Gagal menyimpan konfirmasi.';
+                confirmThanks.classList.remove('hidden');
+            }
+        } catch (err) {
+            confirmThanks.textContent = 'Tidak dapat terhubung ke server.';
+            confirmThanks.classList.remove('hidden');
+        } finally {
+            buttons.forEach(function (b) { b.disabled = false; });
+        }
     }
 
     function showAlert(message, type) {

@@ -4,40 +4,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Third Party Services
+    | Visueco Self-Hosted Services
     |--------------------------------------------------------------------------
     |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | Visueco TIDAK menggunakan layanan pihak ketiga (AWS/SES/Postmark/Resend/
+    | Slack). Seluruh Machine Learning ditangani mandiri oleh container
+    | visueco-ml. Kredensial di bawah hanya menunjuk ke service internal.
     |
     */
 
-    'postmark' => [
-        'key' => env('POSTMARK_API_KEY'),
-    ],
-
-    'resend' => [
-        'key' => env('RESEND_API_KEY'),
-    ],
-
-    'ses' => [
-        'key' => env('AWS_ACCESS_KEY_ID'),
-        'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-    ],
-
-    'slack' => [
-        'notifications' => [
-            'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
-            'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
-        ],
-    ],
-
     'ai_ecosort' => [
-        'endpoint' => env('AI_ECOSORT_ENDPOINT', 'https://api.ai-ecosort.local/v1/predict'),
-        'timeout' => (int) env('AI_ECOSORT_TIMEOUT', 10),
+        'endpoint' => env('AI_ECOSORT_ENDPOINT', 'http://visueco-ml:8001/predict'),
+        'timeout' => (int) env('AI_ECOSORT_TIMEOUT', 30),
+        'train_timeout' => (int) env('AI_ECOSORT_TRAIN_TIMEOUT', 600),
     ],
 
 ];

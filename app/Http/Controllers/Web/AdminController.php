@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Exceptions\AiServiceException;
 use App\Http\Controllers\Controller;
 use App\Models\RewardRedeem;
 use App\Models\WasteScan;
+use App\Services\ModelTrainerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +15,10 @@ use Throwable;
 
 class AdminController extends Controller
 {
+    public function __construct(
+        private readonly ModelTrainerService $trainerService,
+    ) {}
+
     public function index(): View
     {
         return view('admin.dashboard', [
@@ -21,7 +27,40 @@ class AdminController extends Controller
                 ->where('status', 'pending')
                 ->orderByDesc('created_at')
                 ->get(),
+            'modelStats' => $this->trainerService->stats(),
         ]);
+    }
+
+    /**
+     * Picu pelatihan ulang model AI dari seluruh data latih terkumpul.
+     */
+    public function trainModel(): JsonResponse
+    {
+        try {
+            $version = $this->trainerService->train();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Model AI berhasil dilatih ulang.',
+                'data' => [
+                    'version'      => $version->version,
+                    'accuracy'     => $version->accuracy,
+                    'sample_count' => $version->sample_count,
+                ],
+            ]);
+        } catch (AiServiceException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() === 422 ? 422 : 503);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat melatih model.',
+            ], 500);
+        }
     }
 
     public function verifyVoucher(Request $request): JsonResponse

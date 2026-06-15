@@ -11,11 +11,23 @@ class AiPredictorService
 {
     private readonly string $endpoint;
     private readonly int $timeout;
+    private readonly int $trainTimeout;
 
     public function __construct()
     {
         $this->endpoint = config('services.ai_ecosort.endpoint');
-        $this->timeout = config('services.ai_ecosort.timeout', 10);
+        $this->timeout = config('services.ai_ecosort.timeout', 30);
+        $this->trainTimeout = config('services.ai_ecosort.train_timeout', 600);
+    }
+
+    /**
+     * Base URL ML service (tanpa path /predict), untuk endpoint lain
+     * seperti /learn, /train, /model/info.
+     */
+    private function baseUrl(): string
+    {
+        // Buang segmen terakhir (/predict) dari endpoint.
+        return preg_replace('#/[^/]+$#', '', $this->endpoint);
     }
 
     /**
@@ -50,6 +62,89 @@ class AiPredictorService
         }
 
         return $this->mapResponse($response->json());
+    }
+
+    /**
+     * Kirim 1 gambar berlabel ke ML service untuk disimpan sebagai data latih.
+     *
+     * @throws AiServiceException
+     */
+    public function learnSample(string $imageContents, string $filename, int $categoryId): array
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->attach('image', $imageContents, $filename)
+                ->post($this->baseUrl() . '/learn', [
+                    'category_id' => $categoryId,
+                ]);
+        } catch (ConnectionException $e) {
+            throw new AiServiceException('Koneksi ke server AI terputus.', 503, $e);
+        }
+
+        if ($response->failed()) {
+            throw new AiServiceException(
+                'Gagal menyimpan data latih ke server AI.',
+                $response->status()
+            );
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Picu pelatihan ulang model dari seluruh dataset.
+     *
+     * @throws AiServiceException
+     */
+    public function trainModel(): array
+    {
+        try {
+            $response = Http::timeout($this->trainTimeout)
+                ->post($this->baseUrl() . '/train');
+        } catch (ConnectionException $e) {
+            throw new AiServiceException('Koneksi ke server AI terputus.', 503, $e);
+        }
+
+        if ($response->status() === 422) {
+            // Data belum cukup untuk melatih.
+            throw new AiServiceException(
+                $response->json('message') ?? 'Data latih belum mencukupi.',
+                422
+            );
+        }
+
+        if ($response->failed()) {
+            throw new AiServiceException(
+                'Server AI gagal melatih model.',
+                $response->status()
+            );
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Ambil info versi & metrik model aktif.
+     *
+     * @throws AiServiceException
+     */
+    public function modelInfo(): array
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->get($this->baseUrl() . '/model/info');
+        } catch (ConnectionException $e) {
+            throw new AiServiceException('Koneksi ke server AI terputus.', 503, $e);
+        }
+
+        if ($response->failed()) {
+            throw new AiServiceException(
+                'Gagal mengambil info model dari server AI.',
+                $response->status()
+            );
+        }
+
+        return $response->json();
     }
 
     /**

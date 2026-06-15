@@ -27,6 +27,10 @@ COPY . .
 # Pre-download bobot MobileNetV2 saat build agar container offline-ready.
 RUN python -c "from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2; MobileNetV2(weights='imagenet')"
 
+# Direktori penyimpanan model terlatih + dataset (di-mount ke named volume).
+ENV MODEL_STORE=/app/model_store
+RUN mkdir -p /app/model_store
+
 EXPOSE 8001
 
 # Health check internal
