@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Web\AuthController;
+use App\Models\PointLedger;
+use App\Models\Reward;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -22,4 +24,14 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
+
+    Route::get('/rewards', function () {
+        return view('rewards', [
+            'rewards' => Reward::where('stock', '>', 0)->orderBy('points_required')->get(),
+            'ledgers' => PointLedger::where('user_id', auth()->id())
+                ->orderByDesc('created_at')
+                ->limit(50)
+                ->get(),
+        ]);
+    })->name('rewards');
 });
