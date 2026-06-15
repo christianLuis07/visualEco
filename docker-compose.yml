@@ -47,6 +47,22 @@ services:
       - visueco-app
 
   # ----------------------------------------------------------
+  #  ML : Python FastAPI + MobileNetV2 (klasifikasi sampah)
+  #       Self-hosted, tanpa API pihak ketiga.
+  # ----------------------------------------------------------
+  visueco-ml:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    image: visueco-ml
+    container_name: visueco-ml
+    restart: unless-stopped
+    expose:
+      - "8001"
+    networks:
+      - visueco-network
+
+  # ----------------------------------------------------------
   #  DB : MySQL 8.0 (database utama)
   # ----------------------------------------------------------
   visueco-db:

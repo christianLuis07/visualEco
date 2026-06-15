@@ -15,7 +15,9 @@
       "PowerShell(docker exec visueco-app *)",
       "PowerShell(php artisan make:migration create_rewards_table; php artisan make:migration create_reward_redeems_table)",
       "PowerShell(Rename-Item *)",
-      "PowerShell(php artisan make:migration add_role_to_users_table --table=users)"
+      "PowerShell(php artisan make:migration add_role_to_users_table --table=users)",
+      "PowerShell(docker compose *)",
+      "Bash(docker exec *)"
     ]
   }
 }

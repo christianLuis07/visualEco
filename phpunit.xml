@@ -30,6 +30,7 @@
         <env name="DB_USERNAME" value="root"/>
         <env name="DB_PASSWORD" value="root_secret"/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="AI_ECOSORT_ENDPOINT" value="https://api.ai-ecosort.local/v1/predict"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
