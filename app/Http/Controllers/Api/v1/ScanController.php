@@ -25,8 +25,11 @@ class ScanController extends Controller
                 $request->file('image')
             );
 
-            // Anti-Fraud: tolak objek non-recyclable atau confidence rendah
-            if (! $prediction['is_recyclable'] || $prediction['confidence_score'] < 0.60) {
+            // Anti-Fraud: tolak objek non-recyclable atau confidence rendah.
+            // Ambang 0.40 disesuaikan dengan karakteristik MobileNetV2 pada foto
+            // dunia nyata (skor agregat lintas-crop) — 0.60 terlalu ketat & menolak
+            // objek sah seperti botol di latar polos.
+            if (! $prediction['is_recyclable'] || $prediction['confidence_score'] < 0.40) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Objek tidak dikenali sebagai sampah yang dapat didaur ulang.',
