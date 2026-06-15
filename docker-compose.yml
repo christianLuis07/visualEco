@@ -1,0 +1,85 @@
+# ============================================================
+#  Visueco - Orkestrasi Multi-Container (Local Development)
+#  Stack : PHP-FPM | Nginx | MySQL
+#  Network : visueco-network (bridge, terisolasi)
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  #  APP : PHP 8.2-FPM (build dari Dockerfile lokal)
+  # ----------------------------------------------------------
+  visueco-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: visueco-app
+    container_name: visueco-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      # Mount kode proyek (cross-platform friendly)
+      - ./:/var/www
+    networks:
+      - visueco-network
+    depends_on:
+      - visueco-db
+
+  # ----------------------------------------------------------
+  #  WEB : Nginx (reverse proxy publik -> PHP-FPM)
+  # ----------------------------------------------------------
+  visueco-web:
+    image: nginx:alpine
+    container_name: visueco-web
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      # Kode proyek (untuk akses file statis & public/)
+      - ./:/var/www
+      # Konfigurasi virtual host Nginx
+      - ./docker-config/nginx:/etc/nginx/conf.d
+    networks:
+      - visueco-network
+    depends_on:
+      - visueco-app
+
+  # ----------------------------------------------------------
+  #  DB : MySQL 8.0 (database utama)
+  # ----------------------------------------------------------
+  visueco-db:
+    image: mysql:8.0
+    container_name: visueco-db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      # Fallback ke variabel standar Laravel (.env)
+      MYSQL_DATABASE: ${DB_DATABASE:-visueco}
+      MYSQL_USER: ${DB_USERNAME:-visueco_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      # Persistensi data agar tidak hilang saat container down
+      - visueco-db-data:/var/lib/mysql
+      # Init script: buat database testing otomatis
+      - ./docker-config/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - visueco-network
+
+# ============================================================
+#  Named Volumes
+# ============================================================
+volumes:
+  visueco-db-data:
+    driver: local
+
+# ============================================================
+#  Networks
+# ============================================================
+networks:
+  visueco-network:
+    driver: bridge

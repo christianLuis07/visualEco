@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /d D:\\\\laragon\\\\www\\\\visualEco)",
+      "Bash(php artisan *)",
+      "PowerShell(php artisan make:migration add_points_balance_to_users_table --table=users)",
+      "PowerShell(php -r \"echo class_exists\\('Laravel\\\\Sanctum\\\\SanctumServiceProvider'\\) ? 'yes' : 'no';\")",
+      "PowerShell(composer require *)",
+      "PowerShell(php artisan test --filter=ScanTrashTest -v 2>&1)",
+      "PowerShell(php artisan test --filter=ScanTrashTest 2>&1)",
+      "PowerShell(mysql *)",
+      "PowerShell(& \"D:\\\\laragon\\\\bin\\\\mysql\\\\mysql-8.0.30-winx64\\\\bin\\\\mysql.exe\" -u root -e \"CREATE DATABASE IF NOT EXISTS visueco_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\" 2>&1)",
+      "PowerShell(docker compose build *)",
+      "PowerShell(docker compose up *)",
+      "PowerShell(docker exec visueco-app *)",
+      "PowerShell(php artisan make:migration create_rewards_table; php artisan make:migration create_reward_redeems_table)",
+      "PowerShell(Rename-Item *)"
+    ]
+  }
+}
