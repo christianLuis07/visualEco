@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\PasswordResetController;
 use App\Models\PointLedger;
 use App\Models\Reward;
 use App\Models\WasteCategory;
@@ -17,6 +18,14 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register']);
+
+    // Reset Password
+    Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequest'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendLink'])
+        ->middleware('throttle:6,1')->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])
+        ->middleware('throttle:6,1')->name('password.update');
 });
 
 // Authenticated routes

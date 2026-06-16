@@ -38,7 +38,10 @@
 
                 {{-- Password --}}
                 <div class="mb-5">
-                    <label for="password" class="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+                    <div class="mb-1.5 flex items-center justify-between">
+                        <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+                        <a href="{{ route('password.request') }}" class="text-xs font-medium text-teal-600 hover:text-teal-700">Lupa password?</a>
+                    </div>
                     <input
                         id="password"
                         name="password"

@@ -17,6 +17,11 @@
                 <p class="text-sm text-slate-500">Ayo kontribusi untuk lingkungan hari ini</p>
             </div>
             <div class="flex items-center gap-2">
+                @if(auth()->user()->role === 'admin')
+                    <a href="{{ route('admin.dashboard') }}" class="rounded-xl bg-teal-50 px-4 py-2 text-xs font-semibold text-[#0D9488] transition hover:bg-teal-100">
+                        Panel Admin
+                    </a>
+                @endif
                 <a href="{{ route('rewards') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-white">
                     Reward
                 </a>

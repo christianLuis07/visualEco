@@ -233,5 +233,218 @@
             if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
             return '';
         }
+
+        // ─── CRUD Reward ───────────────────────────────────
+        const rewardModal   = document.getElementById('modal-reward');
+        const rewardForm    = document.getElementById('reward-form');
+        const rewardDelete  = document.getElementById('modal-reward-delete');
+        const rewardTbody   = document.getElementById('reward-tbody');
+        const rewardAlert   = document.getElementById('reward-alert');
+        const rewardAlertTx = rewardAlert ? rewardAlert.querySelector('[data-alert-text]') : null;
+
+        const fId    = document.getElementById('reward-id');
+        const fTitle = document.getElementById('reward-input-title');
+        const fDesc  = document.getElementById('reward-input-description');
+        const fPts   = document.getElementById('reward-input-points');
+        const fStock = document.getElementById('reward-input-stock');
+        const modalTitle = document.getElementById('modal-reward-title');
+
+        let deleteId = null;
+
+        function openModal(m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+        function closeModal(m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+
+        function clearErrors() {
+            document.querySelectorAll('.reward-err').forEach(function (el) {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+        }
+
+        function showRewardAlert(message, type) {
+            if (!rewardAlert || !rewardAlertTx) return;
+            rewardAlertTx.textContent = message;
+            rewardAlert.className = 'rounded-xl border px-4 py-3 text-sm backdrop-blur w-full mb-4';
+            if (type === 'error') {
+                rewardAlert.classList.add('border-rose-100', 'bg-rose-50/80', 'text-rose-700');
+            } else {
+                rewardAlert.classList.add('border-teal-100', 'bg-teal-50/80', 'text-[#0D9488]');
+            }
+        }
+
+        // Buka modal CREATE
+        const btnCreate = document.getElementById('btn-reward-create');
+        if (btnCreate) {
+            btnCreate.addEventListener('click', function () {
+                clearErrors();
+                fId.value = ''; fTitle.value = ''; fDesc.value = ''; fPts.value = ''; fStock.value = '';
+                modalTitle.textContent = 'Tambah Reward';
+                openModal(rewardModal);
+            });
+        }
+
+        // Buka modal EDIT (delegasi)
+        if (rewardTbody) {
+            rewardTbody.addEventListener('click', function (e) {
+                const editBtn = e.target.closest('.btn-reward-edit');
+                const delBtn = e.target.closest('.btn-reward-delete');
+
+                if (editBtn) {
+                    clearErrors();
+                    fId.value    = editBtn.dataset.id;
+                    fTitle.value = editBtn.dataset.title;
+                    fDesc.value  = editBtn.dataset.description;
+                    fPts.value   = editBtn.dataset.points;
+                    fStock.value = editBtn.dataset.stock;
+                    modalTitle.textContent = 'Edit Reward';
+                    openModal(rewardModal);
+                } else if (delBtn) {
+                    deleteId = delBtn.dataset.id;
+                    document.getElementById('reward-delete-title').textContent = delBtn.dataset.title;
+                    openModal(rewardDelete);
+                }
+            });
+        }
+
+        document.getElementById('reward-cancel')?.addEventListener('click', function () { closeModal(rewardModal); });
+        document.getElementById('reward-delete-cancel')?.addEventListener('click', function () { closeModal(rewardDelete); deleteId = null; });
+
+        // SUBMIT create/update
+        if (rewardForm) {
+            rewardForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                clearErrors();
+
+                const id = fId.value;
+                const payload = {
+                    title:           fTitle.value,
+                    description:     fDesc.value,
+                    points_required: fPts.value === '' ? null : Number(fPts.value),
+                    stock:           fStock.value === '' ? null : Number(fStock.value),
+                };
+                const url = id ? '/api/v1/admin/rewards/' + id : '/api/v1/admin/rewards';
+                const method = id ? 'PUT' : 'POST';
+
+                const submitBtn = document.getElementById('reward-submit');
+                submitBtn.disabled = true;
+
+                try {
+                    const res = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(payload),
+                    });
+                    const json = await res.json();
+
+                    if (res.ok && json.success) {
+                        closeModal(rewardModal);
+                        showRewardAlert(json.message || 'Berhasil disimpan.', 'success');
+                        upsertRow(json.data, !id);
+                    } else if (res.status === 422 && json.errors) {
+                        Object.keys(json.errors).forEach(function (field) {
+                            const el = document.querySelector('.reward-err[data-for="' + field + '"]');
+                            if (el) { el.textContent = json.errors[field][0]; el.classList.remove('hidden'); }
+                        });
+                    } else {
+                        showRewardAlert(json.message || 'Gagal menyimpan reward.', 'error');
+                    }
+                } catch (err) {
+                    showRewardAlert('Tidak dapat terhubung ke server.', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+
+        // CONFIRM delete
+        document.getElementById('reward-delete-confirm')?.addEventListener('click', async function () {
+            if (!deleteId) return;
+            this.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/rewards/' + deleteId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                });
+                const json = await res.json();
+
+                if (res.ok && json.success) {
+                    const row = rewardTbody.querySelector('tr[data-reward-id="' + deleteId + '"]');
+                    if (row) row.remove();
+                    showRewardAlert(json.message || 'Reward dihapus.', 'success');
+                } else {
+                    showRewardAlert(json.message || 'Gagal menghapus reward.', 'error');
+                }
+            } catch (err) {
+                showRewardAlert('Tidak dapat terhubung ke server.', 'error');
+            } finally {
+                this.disabled = false;
+                closeModal(rewardDelete);
+                deleteId = null;
+            }
+        });
+
+        // Tambah/perbarui baris tabel (textContent — anti XSS)
+        function upsertRow(data, isNew) {
+            const emptyRow = document.getElementById('reward-empty-row');
+            if (emptyRow) emptyRow.remove();
+
+            let row = rewardTbody.querySelector('tr[data-reward-id="' + data.id + '"]');
+            if (!row) {
+                row = document.createElement('tr');
+                row.setAttribute('data-reward-id', data.id);
+                rewardTbody.prepend(row);
+            }
+            row.textContent = '';
+
+            const tdTitle = document.createElement('td');
+            tdTitle.className = 'px-5 py-3.5 text-sm font-medium text-slate-800';
+            tdTitle.textContent = data.title;
+
+            const tdPts = document.createElement('td');
+            tdPts.className = 'px-5 py-3.5 text-sm text-[#0D9488] font-semibold';
+            tdPts.textContent = Number(data.points_required).toLocaleString('id-ID');
+
+            const tdStock = document.createElement('td');
+            tdStock.className = 'px-5 py-3.5 text-sm text-slate-600';
+            tdStock.textContent = data.stock;
+
+            const tdAct = document.createElement('td');
+            tdAct.className = 'px-5 py-3.5 text-right';
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'btn-reward-edit rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50';
+            editBtn.textContent = 'Edit';
+            editBtn.dataset.id = data.id;
+            editBtn.dataset.title = data.title;
+            editBtn.dataset.description = data.description;
+            editBtn.dataset.points = data.points_required;
+            editBtn.dataset.stock = data.stock;
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn-reward-delete rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50';
+            delBtn.textContent = 'Hapus';
+            delBtn.dataset.id = data.id;
+            delBtn.dataset.title = data.title;
+
+            tdAct.appendChild(editBtn);
+            tdAct.appendChild(document.createTextNode(' '));
+            tdAct.appendChild(delBtn);
+
+            row.appendChild(tdTitle);
+            row.appendChild(tdPts);
+            row.appendChild(tdStock);
+            row.appendChild(tdAct);
+        }
     });
 })();

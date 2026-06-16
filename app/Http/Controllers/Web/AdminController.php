@@ -10,6 +10,7 @@ use App\Services\ModelTrainerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Throwable;
 
@@ -28,6 +29,7 @@ class AdminController extends Controller
                 ->orderByDesc('created_at')
                 ->get(),
             'modelStats' => $this->trainerService->stats(),
+            'rewards' => \App\Models\Reward::orderByDesc('id')->get(),
         ]);
     }
 
@@ -143,6 +145,12 @@ class AdminController extends Controller
 
                 return $redeem;
             });
+
+            Log::channel('security')->info('admin.voucher.completed', [
+                'admin_id'  => $request->user()->id,
+                'redeem_id' => $redeem->id,
+                'ip'        => $request->ip(),
+            ]);
 
             return response()->json([
                 'success' => true,

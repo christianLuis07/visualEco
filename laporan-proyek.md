@@ -1,286 +1,302 @@
-# Draf Pemetaan Laporan Proyek UAS — Visueco
+# LAPORAN PROYEK — Visueco
+### Aplikasi Web Audit Sampah Berbasis AI dengan Penerapan Secure Coding & OWASP Top 10
 
-> Dokumen ini adalah **panduan isi** untuk menyusun Laporan Proyek di Microsoft Word.
-> Setiap bab dipetakan ke file ringkasan-perubahan yang sudah ada sebagai sumber data.
+**Mata Kuliah:** Praktikum Pemrograman Keamanan Web
+**Program Studi:** Rekayasa Keamanan Siber — Politeknik Negeri Cilacap
+**Tahun Akademik:** 2025/2026
 
----
-
-## BAB 1 — PENDAHULUAN
-
-### 1.1 Latar Belakang
-
-Indonesia menghasilkan 68,5 juta ton sampah per tahun (SIPSN, 2023), dengan hanya 7,5% yang berhasil didaur ulang. SDGs Butir 12 (*Responsible Consumption and Production*) menuntut pengelolaan sampah yang berkelanjutan di tingkat komunitas. Namun, tantangan utama di lingkungan RT/RW adalah **minimnya insentif bagi warga untuk memilah sampah** dan **tidak adanya sistem pencatatan transparan** atas kontribusi masing-masing warga.
-
-Visueco hadir sebagai solusi teknologi berupa **aplikasi web audit sampah berbasis AI** yang memungkinkan warga memindai sampah melalui kamera ponsel, mendapatkan poin reward secara real-time, dan menukarkannya dengan hadiah nyata melalui pengurus RT — seluruhnya tercatat dalam buku besar digital yang transparan.
-
-### 1.2 Rumusan Masalah
-
-1. Bagaimana merancang sistem identifikasi sampah otomatis yang mampu mengklasifikasikan jenis sampah melalui analisis gambar?
-2. Bagaimana membangun sistem poin dan reward yang aman dari manipulasi (anti-fraud) serta tahan terhadap race condition?
-3. Bagaimana menyediakan portal administrasi yang memungkinkan verifikasi fisik voucher secara real-time?
-
-### 1.3 Tujuan
-
-1. Membangun aplikasi web multi-container (Docker) yang dapat dijalankan instan tanpa instalasi runtime tambahan.
-2. Mengimplementasikan pipeline scan sampah AI → poin reward → redeem voucher secara end-to-end.
-3. Menerapkan standar keamanan OWASP pada seluruh lapisan aplikasi (autentikasi, otorisasi, file upload, race condition).
-
-### 1.4 Metodologi
-
-Specification-Driven Development (SDD) — setiap fitur diawali dengan spesifikasi teknis tertulis, diimplementasikan secara bertahap (11 tahap), dan diverifikasi melalui automated test suite (15 skenario, 89 assertions).
-
-> **Sumber data:** Ringkasan seluruh tahap (1.5 s/d 5.0) di folder `ringkasan-perubahan/`
+> Dokumen ini mengikuti struktur 6 bab sesuai ketentuan Soal Praktikum UAS.
+> Siap disalin ke Microsoft Word.
 
 ---
 
-## BAB 2 — ANALISIS SISTEM
+# BAB 1 — PENDAHULUAN
 
-### 2.1 Arsitektur Multi-Container Docker
+## 1.1 Latar Belakang
 
-> **Sumber:** `ringkasan-perubahan/1.5.md` bagian header, `Dockerfile`, `docker-compose.yml`
+Indonesia menghasilkan puluhan juta ton sampah per tahun dengan tingkat daur
+ulang yang masih rendah. Tantangan utama di tingkat lingkungan (RT/RW) adalah
+minimnya insentif bagi warga untuk memilah sampah serta tidak adanya sistem
+pencatatan yang transparan.
 
-Gambarkan diagram arsitektur tiga container:
+Sejalan dengan **Sustainable Development Goals (SDGs) Butir 12 — Konsumsi dan
+Produksi yang Bertanggung Jawab**, dibangun **Visueco**: aplikasi web yang
+memungkinkan warga memindai sampah melalui kamera, dikenali jenisnya oleh
+Machine Learning, memperoleh poin, dan menukarkannya dengan hadiah nyata.
+
+Sebagai proyek mata kuliah **Keamanan Web**, fokus utama bukan hanya
+fungsionalitas, melainkan penerapan **Secure Coding** dan kesadaran **OWASP
+Top 10** sejak perancangan hingga implementasi.
+
+## 1.2 Tujuan Aplikasi
+
+1. Membangun aplikasi web Laravel dengan autentikasi, manajemen data (CRUD),
+   dan kontrol akses berbasis peran yang **aman**.
+2. Menerapkan mitigasi kerentanan OWASP: autentikasi, otorisasi, validasi input,
+   CSRF, XSS, keamanan unggah berkas, penanganan error, serta logging & monitoring.
+3. Menyediakan fitur audit sampah berbasis AI **self-hosted** (tanpa pihak ketiga)
+   sebagai nilai tambah inovatif yang tetap menjaga privasi data.
+
+---
+
+# BAB 2 — ANALISIS SISTEM
+
+## 2.1 Kebutuhan Sistem
+
+### Kebutuhan Fungsional
+| Kode | Kebutuhan |
+|------|-----------|
+| F-01 | Registrasi, login, logout, reset password |
+| F-02 | Manajemen data reward (Create, Read, Update, Delete) |
+| F-03 | Kontrol akses dua peran: Administrator & User |
+| F-04 | Scan sampah → klasifikasi AI → pemberian poin |
+| F-05 | Penukaran poin dengan reward (redeem) |
+| F-06 | Verifikasi & penyerahan voucher oleh admin |
+| F-07 | Model AI belajar dari konfirmasi warga |
+
+### Kebutuhan Non-Fungsional
+| Kode | Kebutuhan |
+|------|-----------|
+| NF-01 | Keamanan sesuai OWASP Top 10 |
+| NF-02 | Berjalan dalam container Docker (portabel) |
+| NF-03 | ML berjalan di CPU tanpa GPU (transfer learning) |
+| NF-04 | Logging audit keamanan terpisah |
+
+## 2.2 Arsitektur Sistem (Multi-Container)
 
 ```
 ┌─────────────┐     ┌───────────────┐     ┌──────────────┐
 │ visueco-web │────▶│ visueco-app   │────▶│ visueco-db   │
-│ Nginx:alpine│     │ PHP 8.2-FPM   │     │ MySQL 8.0    │
-│ Port: 8000  │     │ Port: 9000    │     │ Port: 3306   │
-└─────────────┘     └───────────────┘     └──────────────┘
+│ Nginx       │     │ PHP 8.2-FPM   │     │ MySQL 8.0    │
+│ Port 8000   │     │ + Node.js 20  │     │ Port 3306    │
+└─────────────┘     └───────┬───────┘     └──────────────┘
+                            │ HTTP /predict, /train
+                            ▼
+                    ┌────────────────┐
+                    │ visueco-ml     │
+                    │ FastAPI +      │
+                    │ MobileNetV2    │
+                    └────────────────┘
 ```
 
-Jelaskan:
-- **Nginx** sebagai reverse proxy yang meneruskan request ke PHP-FPM
-- **PHP-FPM** menjalankan Laravel dengan user non-root `www` (UID 1000)
-- **MySQL 8.0** dengan named volume `visueco-db-data` untuk persistensi data
-- Ketiga container terhubung via `visueco-network` (bridge mode, terisolasi)
+Empat container terisolasi dalam jaringan bridge `visueco-network`. Tidak ada
+ketergantungan layanan pihak ketiga — seluruh ML self-hosted.
 
-### 2.2 Alur State Machine UI — Dashboard Scan
+## 2.3 Aktor Sistem
+- **User (Warga):** scan sampah, kumpulkan poin, tukar reward.
+- **Administrator (Pengurus RT):** kelola reward (CRUD), verifikasi voucher,
+  latih model AI.
 
-> **Sumber:** `ringkasan-perubahan/3.2.md` bagian "State Machine UI"
+---
 
-```
-IDLE ──[file dipilih]──▶ PREVIEW ──[klik Analisis]──▶ LOADING ──▶ SUCCESS
-                                                         │            │
-                                                         ▼            ▼
-                                                       ERROR     Reset input
-                                                                 & update poin
-```
+# BAB 3 — IMPLEMENTASI
 
-Jelaskan transisi state: IDLE → PREVIEW → LOADING → SUCCESS/ERROR, elemen UI yang visible/hidden di setiap state.
+## 3.1 Struktur Database
 
-### 2.3 Alur Bisnis Lengkap
+Aplikasi memiliki **lebih dari 3 tabel utama** (memenuhi syarat minimal CRUD):
 
-```
-Warga scan sampah → AI analisis → Poin masuk → Tukar reward → Voucher dicetak
-     │                                              │
-     └──── Dashboard (/dashboard) ─────────── Rewards (/rewards)
+| Tabel | Primary Key | Fungsi |
+|-------|-------------|--------|
+| `users` | UUID | Akun + peran (admin/user) + saldo poin |
+| `rewards` | Auto-increment | Katalog hadiah (objek CRUD utama) |
+| `waste_categories` | Integer (1-5) | Master kategori sampah |
+| `waste_scans` | UUID | Riwayat scan sampah |
+| `point_ledgers` | UUID | Buku besar mutasi poin (polymorphic) |
+| `reward_redeems` | UUID | Transaksi penukaran voucher |
+| `training_samples` | UUID | Data latih hasil konfirmasi warga |
+| `model_versions` | Integer | Riwayat versi & akurasi model AI |
+| `password_reset_tokens` | email | Token reset password |
 
-Pengurus RT verifikasi voucher → Serahkan hadiah → Status completed
-     │
-     └──── Admin Panel (/admin)
+**Keputusan desain:** UUID pada tabel transaksional untuk mencegah *ID
+enumeration*; integer pada master data.
+
+### Relasi Utama
+- `users` 1—N `waste_scans`, `point_ledgers`, `reward_redeems`, `training_samples`
+- `rewards` 1—N `reward_redeems`
+- `point_ledgers` —polymorphic→ `waste_scans` / `reward_redeems`
+
+## 3.2 Fitur Aplikasi
+
+### A. Autentikasi (F-01)
+- Register, Login, Logout — manual (tanpa Breeze), session-based.
+- **Reset Password** — password broker Laravel, token kedaluwarsa 60 menit.
+
+### B. Manajemen Data Reward — CRUD Penuh (F-02)
+`AdminRewardController` (dilindungi `role:admin`):
+
+| Operasi | Endpoint | Method |
+|---------|----------|--------|
+| Create | `/api/v1/admin/rewards` | POST |
+| Read (list) | `/api/v1/admin/rewards` | GET |
+| Read (detail) | `/api/v1/admin/rewards/{id}` | GET |
+| **Update** | `/api/v1/admin/rewards/{id}` | PUT/PATCH |
+| **Delete** | `/api/v1/admin/rewards/{id}` | DELETE |
+
+Delete dilindungi integritas: reward dengan riwayat penukaran tidak bisa dihapus.
+
+### C. Role & Hak Akses (F-03)
+Middleware `EnsureUserHasRole` — user biasa mengakses area admin → 403 + dicatat.
+
+### D. Fitur Inti
+- **Scan AI** (F-04): unggah foto → ML klasifikasi → poin (anti-fraud).
+- **Redeem** (F-05): tukar poin → voucher (lock anti race-condition).
+- **Verifikasi voucher** (F-06): admin scan kode → serah hadiah.
+- **Self-learning ML** (F-07): konfirmasi warga → data latih → latih ulang.
+
+## 3.3 Kontrak Response API (Contoh)
+
+```json
+// POST /api/v1/scan → 201
+{
+  "success": true,
+  "data": {
+    "scan_id": "uuid", "detected_item": "Botol Plastik",
+    "category_id": 1, "category_name": "Plastik",
+    "confidence_score": 0.92, "points_awarded": 10, "points_balance": 110
+  }
+}
 ```
 
 ---
 
-## BAB 3 — IMPLEMENTASI
+# BAB 4 — ANALISIS KEAMANAN
 
-### 3.1 Skema Database — ERD Berbasis UUID
+Bagian ini memetakan implementasi terhadap **OWASP Top 10** dan delapan aspek
+keamanan yang diminta soal.
 
-> **Sumber:** File migrasi di `database/migrations/`
+## 4.1 Authentication Security
+**Ancaman:** brute-force, user enumeration, session fixation.
+**Mitigasi:**
+- Pesan login gagal generik ("Email atau password salah") → anti-enumeration.
+- `session()->regenerate()` saat login → anti session fixation.
+- Password di-hash Bcrypt (cost 12).
+- Reset password: token acak hashed, kedaluwarsa, throttle.
 
-Gambarkan Entity Relationship Diagram dengan 6 tabel:
+## 4.2 Authorization Security (OWASP A01: Broken Access Control / BFLA)
+**Ancaman:** user biasa mengakses fungsi admin.
+**Mitigasi:** middleware `role:admin` pada seluruh route admin (web & API).
+Setiap akses ditolak **dicatat** di log keamanan (`authz.denied`).
 
-| Tabel | Primary Key | Tipe |
-|-------|------------|------|
-| `users` | UUID | Transaksional |
-| `waste_scans` | UUID | Transaksional |
-| `point_ledgers` | UUID | Transaksional |
-| `reward_redeems` | UUID | Transaksional |
-| `waste_categories` | Auto-increment Integer | Master Data |
-| `rewards` | Auto-increment Integer | Master Data |
+## 4.3 Input Validation (OWASP A03: Injection)
+**Mitigasi:**
+- `FormRequest` & `$request->validate()` di setiap endpoint.
+- Eloquent ORM (prepared statements) → anti SQL Injection.
+- Mass-assignment dibatasi `$fillable`.
+- Validasi reward: tipe, panjang, rentang, keunikan judul.
 
-Relasi:
-- `users` 1:N `waste_scans` (FK: user_id)
-- `users` 1:N `point_ledgers` (FK: user_id)
-- `users` 1:N `reward_redeems` (FK: user_id)
-- `waste_categories` 1:N `waste_scans` (FK: waste_category_id)
-- `rewards` 1:N `reward_redeems` (FK: reward_id)
-- `point_ledgers` ←→ morphable (polymorphic ke waste_scans atau reward_redeems)
+## 4.4 Cross Site Request Forgery (CSRF)
+**Mitigasi:** token CSRF pada semua form (`@csrf`); AJAX mengirim header
+`X-XSRF-TOKEN` (Sanctum stateful). Route reset & login diberi throttle.
 
-Jelaskan **mengapa UUID** pada tabel transaksional: mencegah ID enumeration attack dan aman untuk distributed system.
+## 4.5 Cross Site Scripting (XSS) (OWASP A03)
+**Mitigasi:**
+- Blade `{{ }}` auto-escape.
+- Seluruh data dinamis dari API di-render via `textContent` (BUKAN `innerHTML`)
+  di JavaScript → menutup DOM-based XSS.
 
-### 3.2 Kontrak Response API
+## 4.6 File Upload Security
+**Ancaman:** unggah file berbahaya, path traversal.
+**Mitigasi berlapis:**
+1. Client: `accept` + cek MIME & ukuran (UX).
+2. Server: `image|mimes:jpeg,png,jpg|max:4096` (cek header bytes).
+3. Storage: `->store()` dengan nama hash acak.
+4. Business: anti-fraud confidence ≥ ambang + is_recyclable.
 
-> **Sumber:** `ringkasan-perubahan/1.5.md` dan `ringkasan-perubahan/2.0.md`
+## 4.7 Error Handling
+**Mitigasi:** try-catch di seluruh controller; pesan error ke user generik
+(tidak membocorkan stack trace); detail teknis masuk log via `report()`.
+`APP_DEBUG=false` direkomendasikan untuk produksi.
 
-#### POST /api/v1/scan — Response 201
+## 4.8 Logging & Monitoring (OWASP A09: Security Logging Failures)
+**Implementasi:** channel log khusus `security` (`storage/logs/security-*.log`),
+terpisah dari log aplikasi. Peristiwa yang dicatat:
+- `auth.login.success` / `auth.login.failed` (deteksi brute-force)
+- `auth.logout`, `auth.register`
+- `authz.denied` (percobaan akses tak sah)
+- `admin.reward.created/updated/deleted`
+- `admin.voucher.completed`
+- `auth.password.reset_requested/success/failed`
 
-```json
-{
-    "success": true,
-    "message": "Scan berhasil diproses dan poin telah ditambahkan.",
-    "data": {
-        "scan_id": "uuid",
-        "detected_item": "Botol Plastik",
-        "category_name": "Plastik",
-        "confidence_score": 0.92,
-        "is_recyclable": true,
-        "instructions": ["Kosongkan isi botol", "..."],
-        "points_awarded": 10,
-        "points_balance": 110
-    }
-}
-```
+**Penting:** password & kredensial **tidak pernah** dicatat.
 
-#### POST /api/v1/redeem — Response 201
-
-```json
-{
-    "success": true,
-    "message": "Penukaran reward berhasil.",
-    "data": {
-        "redeem_id": "uuid",
-        "reward_title": "Voucher Sembako Rp20.000",
-        "points_spent": 40,
-        "redemption_code": "VSEC-ABCD1234",
-        "status": "pending",
-        "points_balance": 60
-    }
-}
-```
-
-### 3.3 Implementasi Service Layer — AiPredictorService
-
-> **Sumber:** `ringkasan-perubahan/1.5.md`
-
-Jelaskan pola **Service Layer** yang memisahkan business logic AI dari controller. Service menerima `UploadedFile`, mengirim ke endpoint AI eksternal via `Http::timeout()->attach()->post()`, dan mengembalikan array terstruktur.
+## 4.9 Tambahan: Race Condition / TOCTOU
+Redeem reward & complete voucher memakai `DB::transaction()` + `lockForUpdate()`
+(pessimistic locking) untuk mencegah penukaran/penyerahan ganda.
 
 ---
 
-## BAB 4 — ANALISIS KEAMANAN
+# BAB 5 — PENGUJIAN
 
-### 4.1 Mitigasi Broken Function Level Authorization (OWASP BFLA)
+## 5.1 Metode
+Pengujian otomatis menggunakan **PHPUnit** di dalam Docker terhadap database
+terpisah (`visueco_test`). Setiap fitur keamanan diverifikasi dengan skenario
+positif & negatif.
 
-> **Sumber:** `ringkasan-perubahan/2.2.md`
+## 5.2 Matriks Hasil Pengujian
 
-Jelaskan middleware `EnsureUserHasRole`:
-- Route admin API dilindungi `middleware('role:admin')` di dalam group `auth:sanctum`
-- Route admin web dilindungi `middleware('role:admin')` di dalam group `auth`
-- User biasa yang mengakses endpoint admin mendapat 403 Forbidden
-- Dual-response: JSON untuk API request, abort(403) untuk web request
-
-### 4.2 File Upload Security — Defense in Depth
-
-> **Sumber:** `ringkasan-perubahan/3.2.md` bagian "Keamanan Upload File"
-
-| Layer | Mekanisme | Tujuan |
+| Suite | Skenario | Status |
 |-------|----------|--------|
-| 1 — Client | `accept="image/jpeg,image/png"`, JS MIME + size check | UX feedback instan |
-| 2 — Server | `required\|image\|mimes:jpeg,png,jpg\|max:4096` | Validasi ketat (cek header bytes) |
-| 3 — Storage | `->store('visueco-scans', 'public')` nama hash | Anti path traversal |
-| 4 — Business | confidence >= 60% + is_recyclable check | Anti-fraud gaming poin |
-| 5 — Output | `escapeHtml()` + `textContent` | XSS prevention |
+| ScanTrashTest | 9 (sukses, validasi, anti-fraud, AI down, unauth) | PASS |
+| RedeemRewardTest | 4 (sukses, poin kurang, stok habis, unauth) | PASS |
+| ScanConfirmTest | 5 (konfirmasi, koreksi, invalid, dobel, unauth) | PASS |
+| **AdminRewardCrudTest** | 10 (CRUD penuh, validasi, BFLA, guest) | PASS |
+| **PasswordResetTest** | 6 (request, anti-enumeration, reset, token invalid) | PASS |
+| ExampleTest | 2 | PASS |
+| **TOTAL** | **36 tests / 141 assertions** | **ALL PASS** |
 
-### 4.3 Race Condition & TOCTOU Prevention
+## 5.3 Pengujian Keamanan Spesifik
 
-> **Sumber:** `ringkasan-perubahan/4.0.md` bagian "Mekanisme Keamanan Otorisasi State"
+| Aspek | Pengujian | Hasil |
+|-------|-----------|-------|
+| Authorization (BFLA) | User biasa akses CRUD admin | 403 ✓ |
+| Authentication | Guest akses endpoint terlindung | 401 ✓ |
+| Input Validation | Data reward invalid | 422 ✓ |
+| Anti-enumeration | Reset email tak terdaftar | Pesan netral ✓ |
+| Token Security | Reset dengan token palsu | Ditolak ✓ |
+| Integritas Data | Hapus reward yang punya redeem | Diblokir 422 ✓ |
 
-Jelaskan dua titik kritis race condition:
-
-**A. Redeem Reward (Tahap 2.0):**
-```php
-DB::transaction(function () {
-    $user = $request->user()->lockForUpdate()->find(...);
-    $reward = Reward::lockForUpdate()->findOrFail(...);
-    // Cek stok + saldo → decrement atomik
-});
-```
-
-**B. Complete Voucher (Tahap 4.0):**
-```php
-DB::transaction(function () {
-    $redeem = RewardRedeem::lockForUpdate()->findOrFail($id);
-    if ($redeem->status !== 'pending') throw DomainException;
-    $redeem->update(['status' => 'completed']);
-});
-```
-
-Jelaskan mengapa `lockForUpdate()` (pessimistic locking) menghilangkan TOCTOU gap.
-
-### 4.4 Keamanan Autentikasi
-
-> **Sumber:** `ringkasan-perubahan/3.1.md`
-
-- Pesan error generik → anti username enumeration
-- CSRF token (`@csrf` + `X-XSRF-TOKEN`) → anti CSRF
-- Session regeneration → anti session fixation
-- Bcrypt hashing → password storage aman
-
----
-
-## BAB 5 — PENGUJIAN
-
-### 5.1 Matriks Skenario Pengujian Otomatis
-
-> **Sumber:** `ringkasan-perubahan/1.6.md` dan `ringkasan-perubahan/2.1.md`
-
-| No | File Test | Skenario | Assertion | Status |
-|----|-----------|----------|-----------|--------|
-| 1 | ScanTrashTest | Scan berhasil → 201, poin bertambah | JSON structure, DB record, points increment | PASS |
-| 2 | ScanTrashTest | Request tanpa gambar → 422 | Validation error 'image required' | PASS |
-| 3 | ScanTrashTest | Format file tidak valid → 422 | Validation error 'image mimes' | PASS |
-| 4 | ScanTrashTest | Ukuran file melebihi batas → 422 | Validation error 'image max' | PASS |
-| 5 | ScanTrashTest | Objek non-recyclable → 422 anti-fraud | is_recyclable = false ditolak | PASS |
-| 6 | ScanTrashTest | Confidence rendah (< 0.60) → 422 anti-fraud | Low confidence ditolak | PASS |
-| 7 | ScanTrashTest | AI service timeout → 503 | ConnectionException → AiServiceException | PASS |
-| 8 | ScanTrashTest | AI service error 500 → 503 | Server error → AiServiceException | PASS |
-| 9 | ScanTrashTest | User tidak terautentikasi → 401 | Unauthenticated response | PASS |
-| 10 | RedeemRewardTest | Redeem berhasil → 201, poin & stok berkurang | JSON structure, DB assertions | PASS |
-| 11 | RedeemRewardTest | Poin tidak cukup → 422 | DomainException saldo | PASS |
-| 12 | RedeemRewardTest | Stok habis → 422 | DomainException stok | PASS |
-| 13 | RedeemRewardTest | User tidak terautentikasi → 401 | Unauthenticated response | PASS |
-| 14 | ScanTrashTest | File tersimpan di storage disk 'public' | Storage::disk('public')->assertExists | PASS |
-| 15 | ScanTrashTest | PointLedger record terbentuk (morphable) | DB assertion morphable_type + id | PASS |
-
-**Total: 15 tests, 89 assertions — ALL PASSED**
-
-### 5.2 Perintah Eksekusi Test
-
+## 5.4 Perintah Pengujian
 ```bash
-docker exec -it visueco-app php artisan test
+docker exec visueco-app php artisan test
 ```
 
-Test berjalan di dalam container `visueco-app` terhadap database `visueco_test` di container `visueco-db` — lingkungan identik dengan production.
+---
+
+# BAB 6 — KESIMPULAN
+
+## 6.1 Pencapaian
+
+| Syarat Soal UAS | Status |
+|-----------------|--------|
+| Auth: Register, Login, Logout | ✅ |
+| Reset Password (nilai tambah) | ✅ |
+| CRUD ≥3 tabel (Create/Read/Update/Delete) | ✅ |
+| Role: Admin + User | ✅ |
+| Authentication Security | ✅ |
+| Authorization Security | ✅ |
+| Input Validation | ✅ |
+| CSRF | ✅ |
+| XSS | ✅ |
+| File Upload Security | ✅ |
+| Error Handling | ✅ |
+| Logging & Monitoring | ✅ |
+
+Seluruh syarat wajib terpenuhi, ditambah fitur opsional (reset password) dan
+nilai inovasi (ML self-hosted yang belajar).
+
+## 6.2 Kesimpulan
+Visueco membuktikan bahwa aplikasi web fungsional dapat dibangun dengan
+**Secure Coding** dan kesadaran **OWASP Top 10** sejak awal. Seluruh aspek
+keamanan yang diminta diterapkan dan **diverifikasi melalui 36 pengujian
+otomatis**. Aplikasi berjalan terisolasi dalam Docker tanpa ketergantungan
+pihak ketiga, menjaga privasi data warga.
+
+## 6.3 Keterbatasan & Pengembangan Lanjut
+- Akurasi ML (~54-65%) masih dapat ditingkatkan dengan menambah data latih.
+- Belum ada pagination pada daftar data besar.
+- Pengiriman email reset masih ke log (`MAIL_MAILER=log`) — produksi perlu SMTP.
 
 ---
 
-## BAB 6 — KESIMPULAN
-
-### 6.1 Evaluasi Pencapaian
-
-| Tujuan | Status | Bukti |
-|--------|--------|-------|
-| Aplikasi multi-container Docker instan | Tercapai | README Quick Start, 3 container running |
-| Pipeline scan AI → poin → redeem end-to-end | Tercapai | 15 test scenarios passed |
-| Standar keamanan OWASP pada seluruh lapisan | Tercapai | BFLA, CSRF, XSS, race condition mitigated |
-| UI Clean minimalis responsif | Tercapai | Tailwind CSS v4, 4 halaman blade |
-| Methodology SDD terlaksana bertahap | Tercapai | 11 tahap (1.1 → 5.0) terdokumentasi |
-
-### 6.2 Keterbatasan
-
-1. **AI Service Mock:** Endpoint AI eksternal (`ai-ecosort`) belum terhubung ke model ML sesungguhnya — test menggunakan `Http::fake()`. Untuk produksi diperlukan integrasi ke API ML yang sesungguhnya.
-2. **Pagination:** Tabel riwayat poin dan daftar voucher pending belum memiliki pagination — akan menjadi bottleneck jika data melebihi ratusan record.
-3. **Email Notification:** Belum ada notifikasi email saat voucher berhasil ditukar atau diserahkan.
-
-### 6.3 Rekomendasi Pengembangan
-
-1. Integrasi model ML (TensorFlow/PyTorch) untuk klasifikasi sampah real-time.
-2. Implementasi pagination dan infinite scroll pada halaman yang menampilkan data banyak.
-3. Penambahan fitur notifikasi (email/push) untuk status voucher.
-4. Dashboard analitik admin dengan grafik tren scan harian/mingguan.
-5. Implementasi rate limiting pada endpoint scan untuk mencegah abuse.
-
----
-
-> **Catatan:** Setiap bab di atas telah dipetakan ke file sumber di folder `ringkasan-perubahan/`. Salin narasi dan tabel ke Microsoft Word, lalu tambahkan screenshot UI sebagai lampiran visual.
+*Lampiran: tangkapan layar UI dapat ditambahkan sesuai kebutuhan. Source code
+lengkap disertakan dalam berkas ZIP pengumpulan.*

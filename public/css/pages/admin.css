@@ -16,8 +16,26 @@
     transition: background-color 0.2s ease;
 }
 
+/* Modal CRUD reward */
+.modal-overlay {
+    animation: visueco-fade-in 0.2s ease;
+}
+.modal-overlay .modal-panel {
+    animation: visueco-pop-in 0.28s cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+@keyframes visueco-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes visueco-pop-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    #detail-card:not(.hidden) {
+    #detail-card:not(.hidden),
+    .modal-overlay,
+    .modal-overlay .modal-panel {
         animation: none;
     }
 }

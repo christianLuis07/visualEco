@@ -65,6 +65,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Channel khusus audit keamanan: login, akses ditolak, aksi admin.
+        // Dipisah dari log aplikasi agar mudah dimonitor & diaudit.
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'info',
+            'days' => env('LOG_SECURITY_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
