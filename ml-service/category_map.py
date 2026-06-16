@@ -9,14 +9,24 @@ Setiap kategori memuat:
   - instructions : panduan penanganan yang dikembalikan ke frontend
 """
 
+# Catatan: keyword-map ini hanya FALLBACK saat head terlatih belum ada
+# (cold-start). Akurasi sejati datang dari head yang dilatih pada foto asli.
+# Daftar diperluas dengan label ImageNet realistis untuk mengurangi kasus
+# "tidak dikenali" pada sampah sehari-hari.
 CATEGORIES = {
     1: {
         "name": "Plastik",
         "is_recyclable": True,
         "keywords": [
-            "water_bottle", "pop_bottle", "plastic_bag", "packet",
-            "shopping_basket", "bucket", "soap_dispenser", "lotion",
-            "pill_bottle", "milk_can", "container",
+            # botol & wadah plastik
+            "water_bottle", "pop_bottle", "pill_bottle", "soap_dispenser",
+            "lotion", "sunscreen", "container", "bucket", "measuring_cup",
+            # kresek / kantong / kemasan (prioritas)
+            "plastic_bag", "packet", "shopping_bag", "shopping_basket",
+            "mailbag", "purse", "sandal",
+            # benda plastik umum
+            "lighter", "whistle", "toilet_seat", "spatula_plastic",
+            "rubber_eraser", "ping-pong_ball", "syringe", "remote_control",
         ],
         "instructions": [
             "Kosongkan isi wadah",
@@ -31,7 +41,8 @@ CATEGORIES = {
         "keywords": [
             "carton", "envelope", "notebook", "paper_towel", "book_jacket",
             "binder", "menu", "comic_book", "newspaper", "packet_paper",
-            "toilet_tissue", "carton_box",
+            "toilet_tissue", "carton_box", "wrapper", "paper", "scroll",
+            "jigsaw_puzzle", "crossword_puzzle", "handkerchief",
         ],
         "instructions": [
             "Pastikan kertas kering",
@@ -44,9 +55,13 @@ CATEGORIES = {
         "name": "Logam",
         "is_recyclable": True,
         "keywords": [
-            "tin_can", "beer_can", "soda_can", "can", "nail", "can_opener",
-            "frying_pan", "pot", "wok", "ladle", "spatula", "screw",
-            "padlock", "safety_pin",
+            # kaleng
+            "tin_can", "beer_can", "soda_can", "can", "milk_can", "bottlecap",
+            # peralatan & benda logam
+            "nail", "can_opener", "frying_pan", "pot", "wok", "ladle",
+            "spatula", "screw", "padlock", "safety_pin", "hook", "hatchet",
+            "cleaver", "corkscrew", "scale", "lock", "chain", "buckle",
+            "thimble", "hammer",
         ],
         "instructions": [
             "Kosongkan isi kaleng",
@@ -61,6 +76,8 @@ CATEGORIES = {
         "keywords": [
             "wine_bottle", "beer_glass", "goblet", "vase", "glass",
             "beaker", "measuring_cup", "perfume", "cocktail_shaker",
+            "pitcher", "water_jug", "whiskey_jug", "saltshaker",
+            "wineglass", "jar",
         ],
         "instructions": [
             "Kosongkan isi botol",
@@ -77,7 +94,8 @@ CATEGORIES = {
             "lemon", "pineapple", "strawberry", "mushroom", "cabbage",
             "cauliflower", "bell_pepper", "fig", "pomegranate", "artichoke",
             "zucchini", "spaghetti_squash", "acorn_squash", "butternut_squash",
-            "head_cabbage", "granny_smith", "ear",
+            "head_cabbage", "granny_smith", "ear", "custard_apple", "jackfruit",
+            "bell pepper", "lemon", "hay", "mushroom", "egg",
         ],
         "instructions": [
             "Pisahkan dari plastik atau kemasan",

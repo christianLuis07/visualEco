@@ -158,10 +158,26 @@ def model_info() -> dict:
         "has_trained_head": trained_head is not None,
         "version": int(meta.get("version", 0)),
         "accuracy": meta.get("accuracy"),
+        "train_accuracy": meta.get("train_accuracy"),
+        "val_accuracy": meta.get("val_accuracy"),
+        "reliable": meta.get("reliable", False),
         "sample_count": int(meta.get("sample_count", 0)),
         "per_category": meta.get("per_category", {}),
         "dataset_counts": trainer.count_samples(),
     }
+
+
+@app.post("/seed")
+def seed_dataset() -> JSONResponse:
+    """Salin foto dari folder seed host ke dataset internal ML."""
+    try:
+        result = trainer.ingest_seed()
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Gagal mengimpor folder seed."},
+        )
+    return JSONResponse(content={"success": True, **result})
 
 
 @app.post("/predict")

@@ -62,6 +62,8 @@ services:
     volumes:
       # Persistensi model terlatih + dataset agar tidak hilang saat container down.
       - visueco-ml-data:/app/model_store
+      # Folder seed (foto latih awal dari host) — read-only.
+      - ./ml-service/seed_dataset:/app/seed_dataset:ro
     networks:
       - visueco-network
 

@@ -4,15 +4,19 @@ trainer.py — Fine-tune head classifier di atas MobileNetV2 (feature extractor 
 Strategi (ringan untuk CPU):
   1. MobileNetV2 (tanpa softmax akhir) jadi feature extractor 1280-dim — BEKU.
   2. Tiap sampel berlabel disimpan sebagai file gambar di dataset/{category_id}/.
-  3. Saat train: ekstrak embedding semua gambar (precompute), lalu latih head
-     Dense kecil (1280 -> 128 -> 5). Karena head kecil & fitur precomputed,
-     training selesai dalam hitungan detik meski di CPU.
+  3. Saat train: ekstrak embedding semua gambar (+ augmentasi ringan), lalu latih
+     head Dense kecil (1280 -> 128 -> 5). Cepat di CPU.
   4. Bobot head + metadata versi disimpan ke MODEL_STORE (named volume).
+
+Sumber data latih:
+  - /learn  : 1 gambar dari konfirmasi warga (real-time).
+  - /seed   : batch foto dari folder host (seed_dataset/<n>_<nama>/).
 
 Kategori tetap (sinkron dengan tabel waste_categories di MySQL):
   1=Plastik  2=Kertas  3=Logam  4=Kaca  5=Organik
 """
 
+import hashlib
 import io
 import json
 import os
@@ -22,6 +26,7 @@ import numpy as np
 from PIL import Image
 
 MODEL_STORE = os.environ.get("MODEL_STORE", "/app/model_store")
+SEED_DIR = os.environ.get("SEED_DIR", "/app/seed_dataset")
 DATASET_DIR = os.path.join(MODEL_STORE, "dataset")
 HEAD_PATH = os.path.join(MODEL_STORE, "head.keras")
 META_PATH = os.path.join(MODEL_STORE, "meta.json")
@@ -29,22 +34,85 @@ META_PATH = os.path.join(MODEL_STORE, "meta.json")
 CATEGORY_IDS = [1, 2, 3, 4, 5]
 NUM_CLASSES = 5
 
+# Pemetaan nama folder seed -> category_id.
+SEED_FOLDERS = {
+    "1_plastik": 1,
+    "2_kertas": 2,
+    "3_logam": 3,
+    "4_kaca": 4,
+    "5_organik": 5,
+}
+
+VALID_EXT = (".jpg", ".jpeg", ".png")
+
 
 def _ensure_dirs() -> None:
     for cid in CATEGORY_IDS:
         os.makedirs(os.path.join(DATASET_DIR, str(cid)), exist_ok=True)
 
 
+def _save_image(img: Image.Image, category_id: int, stem: str) -> str:
+    """Simpan gambar JPEG ke dataset/<id>/<stem>.jpg. Return path."""
+    path = os.path.join(DATASET_DIR, str(category_id), f"{stem}.jpg")
+    img.convert("RGB").save(path, "JPEG", quality=90)
+    return path
+
+
 def add_sample(image_bytes: bytes, category_id: int) -> str:
-    """Simpan satu gambar berlabel ke dataset. Return path file."""
+    """Simpan satu gambar berlabel ke dataset (dari konfirmasi warga)."""
     if category_id not in CATEGORY_IDS:
         raise ValueError(f"category_id tidak valid: {category_id}")
     _ensure_dirs()
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    name = f"{uuid.uuid4().hex}.jpg"
-    path = os.path.join(DATASET_DIR, str(category_id), name)
-    img.save(path, "JPEG", quality=90)
-    return path
+    img = Image.open(io.BytesIO(image_bytes))
+    return _save_image(img, category_id, uuid.uuid4().hex)
+
+
+def ingest_seed() -> dict:
+    """
+    Salin semua foto dari folder seed host ke dataset internal.
+    Idempotent: nama file = hash isi, jadi foto sama tak digandakan.
+    Return ringkasan: {added, skipped, per_category, counts}.
+    """
+    _ensure_dirs()
+    added = 0
+    skipped = 0
+    per_category = {cid: 0 for cid in CATEGORY_IDS}
+
+    if not os.path.isdir(SEED_DIR):
+        return {"added": 0, "skipped": 0, "per_category": per_category,
+                "counts": count_samples(), "note": "folder seed tidak ditemukan"}
+
+    for folder, cid in SEED_FOLDERS.items():
+        src = os.path.join(SEED_DIR, folder)
+        if not os.path.isdir(src):
+            continue
+        for fname in os.listdir(src):
+            if not fname.lower().endswith(VALID_EXT):
+                continue
+            fpath = os.path.join(src, fname)
+            try:
+                with open(fpath, "rb") as f:
+                    data = f.read()
+                digest = hashlib.sha1(data).hexdigest()[:16]
+                stem = f"seed_{digest}"
+                dest = os.path.join(DATASET_DIR, str(cid), f"{stem}.jpg")
+                if os.path.exists(dest):
+                    skipped += 1
+                    continue
+                img = Image.open(io.BytesIO(data))
+                _save_image(img, cid, stem)
+                added += 1
+                per_category[cid] += 1
+            except Exception:
+                skipped += 1
+                continue
+
+    return {
+        "added": added,
+        "skipped": skipped,
+        "per_category": {str(k): v for k, v in per_category.items()},
+        "counts": count_samples(),
+    }
 
 
 def count_samples() -> dict:
@@ -73,13 +141,36 @@ def load_head():
     return None
 
 
-def _preprocess(preprocess_fn, img: Image.Image) -> np.ndarray:
-    img = img.convert("RGB").resize((224, 224))
-    arr = np.array(img, dtype=np.float32)
-    return preprocess_fn(np.expand_dims(arr, axis=0))
+def _augment(arr: np.ndarray) -> list:
+    """
+    Augmentasi ringan (numpy, tanpa TF) untuk memperbanyak variasi:
+    asli + flip horizontal. Murah di CPU, menggandakan data efektif.
+    """
+    return [arr, arr[:, ::-1, :]]
 
 
-def train(feature_extractor, preprocess_fn, epochs: int = 40) -> dict:
+def _feature_set(feature_extractor, preprocess_fn):
+    """
+    Ekstrak embedding semua gambar dataset (dengan augmentasi).
+    Return (X, y) numpy + counts.
+    """
+    features, labels = [], []
+    for cid in CATEGORY_IDS:
+        d = os.path.join(DATASET_DIR, str(cid))
+        for fname in os.listdir(d):
+            if not fname.endswith(".jpg"):
+                continue
+            img = Image.open(os.path.join(d, fname)).convert("RGB").resize((224, 224))
+            base = np.array(img, dtype=np.float32)
+            for aug in _augment(base):
+                tensor = preprocess_fn(np.expand_dims(aug, axis=0))
+                feat = feature_extractor.predict(tensor, verbose=0)[0]
+                features.append(feat)
+                labels.append(cid - 1)
+    return np.array(features, dtype=np.float32), np.array(labels, dtype=np.int64)
+
+
+def train(feature_extractor, preprocess_fn, epochs: int = 60) -> dict:
     """
     Latih ulang head dari seluruh dataset. Return metadata versi baru.
     Melempar ValueError jika data belum cukup (perlu >=2 kategori berisi).
@@ -89,68 +180,69 @@ def train(feature_extractor, preprocess_fn, epochs: int = 40) -> dict:
     _ensure_dirs()
     counts = count_samples()
     classes_present = [cid for cid, c in counts.items() if c > 0]
-    total = sum(counts.values())
+    total_images = sum(counts.values())
 
     if len(classes_present) < 2:
         raise ValueError(
             "Butuh sampel dari minimal 2 kategori berbeda untuk melatih model."
         )
 
-    # Precompute embedding semua gambar.
-    features = []
-    labels = []
+    x, y = _feature_set(feature_extractor, preprocess_fn)
+
+    # Split jujur: stratified manual. val 'reliable' hanya jika tiap kelas
+    # punya cukup contoh (>=5 gambar asli per kelas → >=10 setelah augmentasi).
+    min_per_class = min(counts[c] for c in classes_present)
+    reliable = (len(classes_present) == NUM_CLASSES) and (min_per_class >= 5)
+
+    # class_weight untuk kelas tak seimbang.
+    class_weight = {}
     for cid in CATEGORY_IDS:
-        d = os.path.join(DATASET_DIR, str(cid))
-        for fname in os.listdir(d):
-            if not fname.endswith(".jpg"):
-                continue
-            img = Image.open(os.path.join(d, fname))
-            tensor = _preprocess(preprocess_fn, img)
-            feat = feature_extractor.predict(tensor, verbose=0)[0]
-            features.append(feat)
-            labels.append(cid - 1)  # index 0..4
+        n = counts[cid] * 2  # augmentasi x2
+        class_weight[cid - 1] = (total_images * 2 / (NUM_CLASSES * n)) if n > 0 else 0.0
 
-    x = np.array(features, dtype=np.float32)
-    y = np.array(labels, dtype=np.int64)
-
-    head = tf.keras.Sequential(
-        [
-            tf.keras.layers.Input(shape=(x.shape[1],)),
-            tf.keras.layers.Dropout(0.3),
-            tf.keras.layers.Dense(128, activation="relu"),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(NUM_CLASSES, activation="softmax"),
-        ]
-    )
+    head = tf.keras.Sequential([
+        tf.keras.layers.Input(shape=(x.shape[1],)),
+        tf.keras.layers.Dropout(0.4),
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(NUM_CLASSES, activation="softmax"),
+    ])
     head.compile(
         optimizer="adam",
         loss="sparse_categorical_crossentropy",
         metrics=["accuracy"],
     )
 
-    # Validasi hanya jika data cukup banyak agar split tidak kosong.
-    val_split = 0.2 if total >= 15 else 0.0
+    callbacks = []
+    val_split = 0.2 if reliable else 0.0
+    if reliable:
+        callbacks.append(tf.keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=8, restore_best_weights=True
+        ))
+
     history = head.fit(
-        x,
-        y,
+        x, y,
         epochs=epochs,
         batch_size=16,
         verbose=0,
         validation_split=val_split,
         shuffle=True,
+        class_weight=class_weight,
+        callbacks=callbacks,
     )
 
-    if "val_accuracy" in history.history:
-        accuracy = float(history.history["val_accuracy"][-1])
-    else:
-        accuracy = float(history.history["accuracy"][-1])
+    train_acc = float(history.history["accuracy"][-1])
+    val_acc = float(history.history.get("val_accuracy", [None])[-1] or 0.0) if reliable else None
 
     head.save(HEAD_PATH)
 
     meta = {
         "version": int(load_meta().get("version", 0)) + 1,
-        "accuracy": round(accuracy, 4),
-        "sample_count": int(total),
+        "accuracy": round(val_acc if val_acc is not None else train_acc, 4),
+        "train_accuracy": round(train_acc, 4),
+        "val_accuracy": round(val_acc, 4) if val_acc is not None else None,
+        "reliable": reliable,
+        "sample_count": int(total_images),
         "per_category": {str(k): v for k, v in counts.items()},
         "classes": CATEGORY_IDS,
     }
