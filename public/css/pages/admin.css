@@ -1,0 +1,23 @@
+/* ===================================================================
+ * Visueco — Admin Panel Styles
+ * Subtle entrance for the voucher detail card.
+ * =================================================================== */
+
+#detail-card:not(.hidden) {
+    animation: visueco-card-in 0.3s cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+
+@keyframes visueco-card-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.voucher-row {
+    transition: background-color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #detail-card:not(.hidden) {
+        animation: none;
+    }
+}

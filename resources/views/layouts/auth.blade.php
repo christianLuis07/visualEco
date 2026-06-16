@@ -10,11 +10,13 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <style>
-        body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-    </style>
+    {{-- CSS khusus per-halaman (ATURAN 1: isolasi kode) --}}
+    @stack('styles')
 </head>
-<body class="bg-slate-50 antialiased">
+<body class="bg-[#F8FAFC] font-sans text-[#0F172A] antialiased" style="font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;">
     @yield('content')
+
+    {{-- JS khusus per-halaman (ATURAN 1: isolasi kode) --}}
+    @stack('scripts')
 </body>
 </html>

@@ -80,6 +80,7 @@ class ScanController extends Controller
                 'data'    => [
                     'scan_id'          => $result['scan']->id,
                     'detected_item'    => $prediction['detected_item'],
+                    'category_id'      => $prediction['category_id'],
                     'category_name'    => $prediction['category_name'],
                     'confidence_score' => $prediction['confidence_score'],
                     'is_recyclable'    => $prediction['is_recyclable'],

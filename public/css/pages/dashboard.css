@@ -1,0 +1,72 @@
+/* ===================================================================
+ * Visueco — Dashboard Page Styles
+ * Custom micro-interactions & silent skeleton-pulse animation.
+ * (Tailwind utilities tetap di HTML; file ini hanya untuk animasi
+ *  custom yang tak ideal ditulis inline — sesuai ATURAN 1.)
+ * =================================================================== */
+
+/* ── Silent fading skeleton (pengganti spinner tradisional) ── */
+.skeleton-pulse {
+    position: relative;
+    overflow: hidden;
+    background-color: #eef2f6;
+}
+
+.skeleton-pulse::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        rgba(238, 242, 246, 0) 0%,
+        rgba(203, 213, 225, 0.45) 50%,
+        rgba(238, 242, 246, 0) 100%
+    );
+    animation: visueco-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes visueco-shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* ── Dropzone subtle interaction ── */
+.dropzone {
+    transition: border-color 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
+}
+.dropzone:active {
+    transform: scale(0.995);
+}
+
+/* ── Premium button sheen (dipakai variant primary action-button) ── */
+.btn-sheen {
+    position: relative;
+    overflow: hidden;
+}
+.btn-sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.22) 50%,
+        transparent 70%
+    );
+    transition: transform 0.7s ease;
+}
+.btn-sheen:hover::after {
+    transform: translateX(120%);
+}
+
+/* ── Hormati preferensi reduce-motion ── */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-pulse::after,
+    .btn-sheen::after {
+        animation: none;
+        transition: none;
+    }
+}
