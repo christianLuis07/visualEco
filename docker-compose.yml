@@ -60,8 +60,9 @@ services:
     expose:
       - "8001"
     volumes:
-      # Persistensi model terlatih + dataset agar tidak hilang saat container down.
-      - visueco-ml-data:/app/model_store
+      # Dataset latih + model di FOLDER HOST agar transparan, mudah diaudit & di-backup.
+      # (Sebelumnya named volume yang tak terlihat di File Explorer.)
+      - ./ml-service/model_store:/app/model_store
       # Folder seed (foto latih awal dari host) — read-only.
       - ./ml-service/seed_dataset:/app/seed_dataset:ro
     networks:
@@ -96,8 +97,6 @@ services:
 # ============================================================
 volumes:
   visueco-db-data:
-    driver: local
-  visueco-ml-data:
     driver: local
 
 # ============================================================

@@ -20,6 +20,11 @@
 /storage/pail
 /vendor
 /error
+
+# Dataset latih ML & model (data runtime — jangan masuk git)
+/ml-service/model_store/dataset
+/ml-service/model_store/*.keras
+/ml-service/model_store/*.json
 Homestead.json
 Homestead.yaml
 Thumbs.db
