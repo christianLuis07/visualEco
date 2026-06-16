@@ -189,16 +189,41 @@ def train(feature_extractor, preprocess_fn, epochs: int = 60) -> dict:
 
     x, y = _feature_set(feature_extractor, preprocess_fn)
 
-    # Split jujur: stratified manual. val 'reliable' hanya jika tiap kelas
-    # punya cukup contoh (>=5 gambar asli per kelas → >=10 setelah augmentasi).
+    # val 'reliable' hanya jika tiap kelas punya cukup contoh
+    # (>=5 gambar asli per kelas → >=10 setelah augmentasi).
     min_per_class = min(counts[c] for c in classes_present)
     reliable = (len(classes_present) == NUM_CLASSES) and (min_per_class >= 5)
 
-    # class_weight untuk kelas tak seimbang.
+    # ── STRATIFIED SPLIT MANUAL ──
+    # Keras validation_split mengambil 20% TERAKHIR tanpa acak; karena data
+    # tersusun per-kelas, itu membuat val set timpang (1 kelas saja).
+    # Di sini kita acak + ambil 20% dari TIAP kelas secara proporsional.
+    rng = np.random.default_rng(42)
+    val_idx = []
+    train_idx = []
+    for cls in range(NUM_CLASSES):
+        idx = np.where(y == cls)[0]
+        if len(idx) == 0:
+            continue
+        rng.shuffle(idx)
+        n_val = max(1, int(round(len(idx) * 0.2))) if reliable else 0
+        val_idx.extend(idx[:n_val].tolist())
+        train_idx.extend(idx[n_val:].tolist())
+
+    rng.shuffle(train_idx)
+    rng.shuffle(val_idx)
+    x_train, y_train = x[train_idx], y[train_idx]
+    has_val = reliable and len(val_idx) > 0
+    validation_data = (x[val_idx], y[val_idx]) if has_val else None
+
+    # class_weight dihitung dari distribusi data TRAIN.
     class_weight = {}
-    for cid in CATEGORY_IDS:
-        n = counts[cid] * 2  # augmentasi x2
-        class_weight[cid - 1] = (total_images * 2 / (NUM_CLASSES * n)) if n > 0 else 0.0
+    unique, counts_arr = np.unique(y_train, return_counts=True)
+    train_total = len(y_train)
+    count_map = dict(zip(unique.tolist(), counts_arr.tolist()))
+    for cls in range(NUM_CLASSES):
+        n = count_map.get(cls, 0)
+        class_weight[cls] = (train_total / (NUM_CLASSES * n)) if n > 0 else 0.0
 
     head = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(x.shape[1],)),
@@ -214,25 +239,24 @@ def train(feature_extractor, preprocess_fn, epochs: int = 60) -> dict:
     )
 
     callbacks = []
-    val_split = 0.2 if reliable else 0.0
-    if reliable:
+    if has_val:
         callbacks.append(tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=8, restore_best_weights=True
+            monitor="val_loss", patience=10, restore_best_weights=True
         ))
 
     history = head.fit(
-        x, y,
+        x_train, y_train,
         epochs=epochs,
         batch_size=16,
         verbose=0,
-        validation_split=val_split,
+        validation_data=validation_data,
         shuffle=True,
         class_weight=class_weight,
         callbacks=callbacks,
     )
 
     train_acc = float(history.history["accuracy"][-1])
-    val_acc = float(history.history.get("val_accuracy", [None])[-1] or 0.0) if reliable else None
+    val_acc = float(history.history["val_accuracy"][-1]) if has_val else None
 
     head.save(HEAD_PATH)
 
@@ -241,7 +265,7 @@ def train(feature_extractor, preprocess_fn, epochs: int = 60) -> dict:
         "accuracy": round(val_acc if val_acc is not None else train_acc, 4),
         "train_accuracy": round(train_acc, 4),
         "val_accuracy": round(val_acc, 4) if val_acc is not None else None,
-        "reliable": reliable,
+        "reliable": reliable and has_val,
         "sample_count": int(total_images),
         "per_category": {str(k): v for k, v in counts.items()},
         "classes": CATEGORY_IDS,

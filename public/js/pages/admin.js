@@ -151,18 +151,21 @@
             });
         });
 
-        // ── Latih Ulang Model AI ──
+        // ── Latih Model AI (train & seed+train berbagi logika) ──
         const btnTrain = document.getElementById('btn-train');
+        const btnSeedTrain = document.getElementById('btn-seed-train');
         const trainAlert = document.getElementById('train-alert');
         const trainAlertText = trainAlert ? trainAlert.querySelector('[data-alert-text]') : null;
 
-        btnTrain.addEventListener('click', async function () {
-            btnTrain.disabled = true;
-            btnTrain.textContent = 'Melatih…';
-            showTrainAlert('Model sedang dilatih. Proses ini bisa memakan waktu beberapa saat…', 'info');
+        async function runTraining(url, btn, label, startMsg) {
+            const buttons = [btnTrain, btnSeedTrain];
+            const original = btn.textContent;
+            buttons.forEach(function (b) { if (b) b.disabled = true; });
+            btn.textContent = label;
+            showTrainAlert(startMsg, 'info');
 
             try {
-                const res = await fetch('/admin/model/train', {
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
@@ -175,24 +178,36 @@
                 const json = await res.json();
 
                 if (res.ok && json.success) {
-                    document.getElementById('stat-version').textContent = 'v' + json.data.version;
+                    const d = json.data;
+                    document.getElementById('stat-version').textContent = 'v' + d.version;
                     document.getElementById('stat-accuracy').textContent =
-                        json.data.accuracy !== null ? Math.round(json.data.accuracy * 100) + '%' : '—';
+                        d.accuracy !== null ? Math.round(d.accuracy * 100) + '%' : '—';
                     document.getElementById('stat-pending').textContent = '0';
-                    showTrainAlert(
-                        'Model berhasil dilatih! Versi v' + json.data.version +
-                        ' (akurasi ' + Math.round(json.data.accuracy * 100) + '%, ' +
-                        json.data.sample_count + ' sampel).', 'success');
+                    showTrainAlert(json.message + ' Versi v' + d.version +
+                        ' — akurasi ' + Math.round((d.accuracy || 0) * 100) + '%, ' +
+                        d.sample_count + ' sampel.', 'success');
                 } else {
                     showTrainAlert(json.message || 'Gagal melatih model.', 'error');
                 }
             } catch (err) {
                 showTrainAlert('Tidak dapat terhubung ke server AI.', 'error');
             } finally {
-                btnTrain.disabled = false;
-                btnTrain.textContent = 'Latih Ulang Model';
+                buttons.forEach(function (b) { if (b) b.disabled = false; });
+                btn.textContent = original;
             }
+        }
+
+        btnTrain.addEventListener('click', function () {
+            runTraining('/admin/model/train', btnTrain, 'Melatih…',
+                'Model sedang dilatih. Proses ini bisa memakan waktu beberapa saat…');
         });
+
+        if (btnSeedTrain) {
+            btnSeedTrain.addEventListener('click', function () {
+                runTraining('/admin/model/seed-train', btnSeedTrain, 'Memproses…',
+                    'Mengimpor foto dari folder seed lalu melatih model…');
+            });
+        }
 
         // ── Helpers alert ──
         function setAlert(el, txtEl, message, type) {

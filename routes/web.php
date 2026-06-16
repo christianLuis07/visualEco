@@ -45,5 +45,6 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/voucher/verify', [AdminController::class, 'verifyVoucher'])->name('admin.voucher.verify');
         Route::patch('/voucher/{id}/complete', [AdminController::class, 'completeRedeem'])->name('admin.voucher.complete');
         Route::post('/model/train', [AdminController::class, 'trainModel'])->name('admin.model.train');
+        Route::post('/model/seed-train', [AdminController::class, 'seedTrainModel'])->name('admin.model.seed-train');
     });
 });

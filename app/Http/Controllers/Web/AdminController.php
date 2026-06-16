@@ -63,6 +63,41 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Impor foto dari folder seed lalu latih ulang model — satu aksi.
+     */
+    public function seedTrainModel(): JsonResponse
+    {
+        try {
+            $result = $this->trainerService->seedAndTrain();
+            $version = $result['version'];
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil mengimpor {$result['seed_added']} foto dan melatih model.",
+                'data' => [
+                    'version'      => $version->version,
+                    'accuracy'     => $version->accuracy,
+                    'sample_count' => $version->sample_count,
+                    'seed_added'   => $result['seed_added'],
+                    'seed_skipped' => $result['seed_skipped'],
+                ],
+            ]);
+        } catch (AiServiceException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() === 422 ? 422 : 503);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat impor seed & melatih model.',
+            ], 500);
+        }
+    }
+
     public function verifyVoucher(Request $request): JsonResponse
     {
         $request->validate([

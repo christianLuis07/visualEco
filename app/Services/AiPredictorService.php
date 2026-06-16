@@ -92,6 +92,30 @@ class AiPredictorService
     }
 
     /**
+     * Impor foto dari folder seed host ke dataset internal ML.
+     *
+     * @throws AiServiceException
+     */
+    public function seedDataset(): array
+    {
+        try {
+            $response = Http::timeout($this->trainTimeout)
+                ->post($this->baseUrl() . '/seed');
+        } catch (ConnectionException $e) {
+            throw new AiServiceException('Koneksi ke server AI terputus.', 503, $e);
+        }
+
+        if ($response->failed()) {
+            throw new AiServiceException(
+                'Server AI gagal mengimpor folder seed.',
+                $response->status()
+            );
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Picu pelatihan ulang model dari seluruh dataset.
      *
      * @throws AiServiceException

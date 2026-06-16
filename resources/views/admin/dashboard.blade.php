@@ -52,7 +52,10 @@
                     <h2 class="text-sm font-semibold text-[#0F172A]">Status Model AI</h2>
                     <p class="text-xs text-slate-400">Model belajar dari konfirmasi warga</p>
                 </div>
-                <x-action-button id="btn-train" variant="primary" class="px-4 py-2 text-xs">Latih Ulang Model</x-action-button>
+                <div class="flex gap-2">
+                    <x-action-button id="btn-seed-train" variant="ghost" class="px-4 py-2 text-xs">Impor Seed + Latih</x-action-button>
+                    <x-action-button id="btn-train" variant="primary" class="px-4 py-2 text-xs">Latih Ulang Model</x-action-button>
+                </div>
             </div>
 
             <x-feedback-alert id="train-alert" class="mb-4" />

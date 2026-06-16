@@ -44,6 +44,24 @@ class ModelTrainerService
     }
 
     /**
+     * Impor foto dari folder seed lalu latih model. Mengembalikan versi baru
+     * beserta jumlah foto yang diimpor.
+     *
+     * @throws AiServiceException
+     */
+    public function seedAndTrain(): array
+    {
+        $seed = $this->aiService->seedDataset();
+        $version = $this->train();
+
+        return [
+            'version'      => $version,
+            'seed_added'   => (int) ($seed['added'] ?? 0),
+            'seed_skipped' => (int) ($seed['skipped'] ?? 0),
+        ];
+    }
+
+    /**
      * Statistik gabungan: data lokal + info dari ML service.
      */
     public function stats(): array
