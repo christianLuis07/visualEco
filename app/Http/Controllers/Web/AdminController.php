@@ -176,4 +176,13 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    public function activityLog(): View
+    {
+        $activities = \Spatie\Activitylog\Models\Activity::with(['causer', 'subject'])
+            ->latest()
+            ->paginate(20);
+
+        return view('admin.activity-log', compact('activities'));
+    }
 }

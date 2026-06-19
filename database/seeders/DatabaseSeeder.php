@@ -20,10 +20,11 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'warga@visueco.test'],
             [
-                'name'           => 'Budi Warga',
-                'password'       => Hash::make('password'),
-                'role'           => 'user',
-                'points_balance' => 100,
+                'name'              => 'Budi Warga',
+                'password'          => Hash::make('password'),
+                'role'              => 'user',
+                'points_balance'    => 100,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -31,10 +32,11 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'admin@visueco.test'],
             [
-                'name'           => 'Admin RT',
-                'password'       => Hash::make('password'),
-                'role'           => 'admin',
-                'points_balance' => 0,
+                'name'              => 'Admin RT',
+                'password'          => Hash::make('password'),
+                'role'              => 'admin',
+                'points_balance'    => 0,
+                'email_verified_at' => now(),
             ]
         );
 

@@ -1,0 +1,102 @@
+/* welcome.css - Visueco GSAP Animated Premium Aesthetic */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400;1,9..144,500&display=swap');
+
+:root {
+    --ink: #111827;
+    --ink-soft: #4b5563;
+    --ink-light: #9ca3af;
+    --cream: #ffffff;
+    --sand: #f3f4f6;
+    --line: #e5e7eb;
+    
+    --teal: #0d9488;
+    --teal-deep: #0f766e;
+    --teal-bright: #14b8a6;
+    
+    --aww-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+    background-color: var(--cream);
+    color: var(--ink);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.font-serif { font-family: 'Fraunces', serif; }
+
+/* GSAP Blobs (Animated by JS) */
+.blob-gsap {
+    will-change: transform;
+}
+
+/* TasteSkill Glass Nav Pill */
+.nav-pill {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(13, 148, 136, 0.1);
+    box-shadow: 0 4px 24px -6px rgba(13, 148, 136, 0.08);
+    transition: all 0.4s var(--aww-ease);
+}
+.nav-pill:hover {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 32px -8px rgba(13, 148, 136, 0.15);
+}
+
+/* Buttons */
+.btn-primary {
+    background: linear-gradient(135deg, var(--teal) 0%, var(--teal-deep) 100%);
+    color: #fff;
+    border: 1px solid transparent;
+    box-shadow: 0 8px 20px -6px rgba(13, 148, 136, 0.4);
+}
+.btn-outline {
+    background-color: rgba(255,255,255,0.8);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    transition: all 0.4s var(--aww-ease);
+}
+.btn-outline:hover {
+    border-color: var(--teal);
+    color: var(--teal-deep);
+}
+
+/* Core classes for GSAP Text Reveals */
+.gs-line {
+    display: block;
+    transform-origin: left top;
+}
+
+.editorial-img {
+    border-radius: 1.5rem;
+    box-shadow: 0 32px 64px -16px rgba(13, 148, 136, 0.15);
+    overflow: hidden;
+}
+
+/* Bento Card Overrides */
+.bento-card {
+    background: #ffffff;
+    border: 1px solid rgba(13, 148, 136, 0.08);
+    border-radius: 1.5rem; 
+    box-shadow: 0 4px 20px -4px rgba(0,0,0,0.02);
+    overflow: hidden;
+    position: relative;
+}
+.bg-gradient-teal {
+    background: linear-gradient(135deg, var(--teal-deep) 0%, #064e3b 100%);
+    border: none;
+    box-shadow: 0 12px 32px -8px rgba(13, 148, 136, 0.4);
+}
+
+/* Step Highlights */
+.gs-step.is-active .gs-step-num {
+    color: var(--teal-deep);
+    opacity: 1;
+}

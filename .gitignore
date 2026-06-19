@@ -20,6 +20,9 @@
 /storage/pail
 /vendor
 /error
+/ringkasan-perubahan
+/hasil
+/.claude
 
 # Dataset latih ML & model (data runtime — jangan masuk git)
 /ml-service/model_store/dataset
@@ -28,3 +31,5 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/laporan-proyek.md
+/agent

@@ -19,6 +19,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Login::class, function (\Illuminate\Auth\Events\Login $event) {
+            activity()
+                ->causedBy($event->user)
+                ->withProperties([
+                    'ip' => request()?->ip(),
+                    'user_agent' => request()?->userAgent(),
+                    'source' => request()?->is('api/*') ? 'mobile' : 'website'
+                ])
+                ->log('User logged in');
+        });
     }
 }

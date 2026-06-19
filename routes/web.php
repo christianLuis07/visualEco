@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\PasswordResetController;
+use App\Http\Controllers\Web\VerifyEmailController;
 use App\Models\PointLedger;
 use App\Models\Reward;
 use App\Models\WasteCategory;
@@ -32,28 +33,37 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    Route::get('/dashboard', function () {
-        return view('dashboard', [
-            'categories' => WasteCategory::orderBy('id')->get(['id', 'name']),
-        ]);
-    })->name('dashboard');
+    // Email Verification Routes
+    Route::get('/email/verify', [VerifyEmailController::class, 'show'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [VerifyEmailController::class, 'verify'])->middleware('signed')->name('verification.verify');
+    Route::post('/email/verification-notification', [VerifyEmailController::class, 'resend'])->middleware('throttle:6,1')->name('verification.send');
 
-    Route::get('/rewards', function () {
-        return view('rewards', [
-            'rewards' => Reward::where('stock', '>', 0)->orderBy('points_required')->get(),
-            'ledgers' => PointLedger::where('user_id', auth()->id())
-                ->orderByDesc('created_at')
-                ->limit(50)
-                ->get(),
-        ]);
-    })->name('rewards');
+    // Verified Routes
+    Route::middleware('verified')->group(function (): void {
+        Route::get('/dashboard', function () {
+            return view('dashboard', [
+                'categories' => WasteCategory::orderBy('id')->get(['id', 'name']),
+            ]);
+        })->name('dashboard');
 
-    // Admin routes
-    Route::prefix('admin')->middleware('role:admin')->group(function (): void {
-        Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
-        Route::post('/voucher/verify', [AdminController::class, 'verifyVoucher'])->name('admin.voucher.verify');
-        Route::patch('/voucher/{id}/complete', [AdminController::class, 'completeRedeem'])->name('admin.voucher.complete');
-        Route::post('/model/train', [AdminController::class, 'trainModel'])->name('admin.model.train');
-        Route::post('/model/seed-train', [AdminController::class, 'seedTrainModel'])->name('admin.model.seed-train');
+        Route::get('/rewards', function () {
+            return view('rewards', [
+                'rewards' => Reward::where('stock', '>', 0)->orderBy('points_required')->get(),
+                'ledgers' => PointLedger::where('user_id', auth()->id())
+                    ->orderByDesc('created_at')
+                    ->limit(50)
+                    ->get(),
+            ]);
+        })->name('rewards');
+
+        // Admin routes
+        Route::prefix('admin')->middleware('role:admin')->group(function (): void {
+            Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
+            Route::get('/activity-log', [AdminController::class, 'activityLog'])->name('admin.activity-log');
+            Route::post('/voucher/verify', [AdminController::class, 'verifyVoucher'])->name('admin.voucher.verify');
+            Route::patch('/voucher/{id}/complete', [AdminController::class, 'completeRedeem'])->name('admin.voucher.complete');
+            Route::post('/model/train', [AdminController::class, 'trainModel'])->name('admin.model.train');
+            Route::post('/model/seed-train', [AdminController::class, 'seedTrainModel'])->name('admin.model.seed-train');
+        });
     });
 });

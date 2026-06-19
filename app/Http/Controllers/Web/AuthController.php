@@ -73,6 +73,8 @@ class AuthController extends Controller
             'role'     => 'user',
         ]);
 
+        event(new \Illuminate\Auth\Events\Registered($user));
+
         Auth::login($user);
 
         Log::channel('security')->info('auth.register', [
@@ -80,7 +82,7 @@ class AuthController extends Controller
             'ip'      => $request->ip(),
         ]);
 
-        return redirect('/dashboard');
+        return redirect()->route('verification.notice')->with('success', 'Akun berhasil terdaftar! Silakan cek email Anda untuk verifikasi.');
     }
 
     public function logout(Request $request): RedirectResponse

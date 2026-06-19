@@ -29,6 +29,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
+                <a href="{{ route('admin.activity-log') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-white">
+                    Log Aktivitas
+                </a>
                 <a href="{{ route('dashboard') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-white">
                     Mode Scan
                 </a>
