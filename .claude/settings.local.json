@@ -18,7 +18,14 @@
       "PowerShell(php artisan make:migration add_role_to_users_table --table=users)",
       "PowerShell(docker compose *)",
       "Bash(docker exec *)",
-      "Bash(docker cp *)"
+      "Bash(docker cp *)",
+      "PowerShell(pip install *)",
+      "PowerShell(python -c \"from docx import Document; print\\('OK'\\)\")",
+      "PowerShell(python -m pip install python-docx)",
+      "PowerShell(\\(Get-Command python\\).Source; python --version)",
+      "PowerShell($pythonExe = \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Python\\\\pythoncore-3.14-64\\\\python.exe\"; if \\(Test-Path $pythonExe\\) { & $pythonExe -c \"from docx import Document; print\\('OK'\\)\" } else { Get-ChildItem \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Python\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name })",
+      "PowerShell(& \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Python\\\\pythoncore-3.14-64\\\\python.exe\" \"D:\\\\laragon\\\\www\\\\visualEco\\\\visualEco-Website\\\\generate_laporan.py\")",
+      "PowerShell($f = Get-Item \"D:\\\\laragon\\\\www\\\\visualEco\\\\visualEco-Website\\\\hasil\\\\laporan-praktikum.docx\"; \"Size: $\\([math]::Round\\($f.Length / 1KB, 1\\)\\) KB, Modified: $\\($f.LastWriteTime\\)\")"
     ]
   }
 }

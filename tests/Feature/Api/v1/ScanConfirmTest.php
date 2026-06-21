@@ -25,10 +25,11 @@ class ScanConfirmTest extends TestCase
 
         Storage::fake('public');
 
-        $this->user = User::create([
-            'name'     => 'Tester Confirm',
-            'email'    => 'confirm@visueco.test',
-            'password' => bcrypt('password'),
+        $this->user = User::forceCreate([
+            'name'              => 'Tester Confirm',
+            'email'             => 'confirm@visueco.test',
+            'email_verified_at' => now(),
+            'password'          => bcrypt('password'),
         ]);
 
         // id tidak fillable di model; set eksplisit lalu save agar deterministik.

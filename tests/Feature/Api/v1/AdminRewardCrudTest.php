@@ -19,13 +19,15 @@ class AdminRewardCrudTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::create([
+        $this->admin = User::forceCreate([
             'name' => 'Admin', 'email' => 'admin@visueco.test',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'), 'role' => 'admin',
         ]);
 
-        $this->user = User::create([
+        $this->user = User::forceCreate([
             'name' => 'Warga', 'email' => 'warga@visueco.test',
+            'email_verified_at' => now(),
             'password' => bcrypt('password'), 'role' => 'user',
         ]);
     }

@@ -23,10 +23,11 @@ class ScanTrashTest extends TestCase
 
         Storage::fake('public');
 
-        $this->user = User::create([
-            'name'     => 'Tester Visueco',
-            'email'    => 'tester@visueco.test',
-            'password' => bcrypt('password'),
+        $this->user = User::forceCreate([
+            'name'              => 'Tester Visueco',
+            'email'             => 'tester@visueco.test',
+            'email_verified_at' => now(),
+            'password'          => bcrypt('password'),
         ]);
 
         $this->category = WasteCategory::create([

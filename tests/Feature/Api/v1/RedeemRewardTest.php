@@ -18,10 +18,11 @@ class RedeemRewardTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::create([
-            'name'     => 'Tester Redeem',
-            'email'    => 'redeem@visueco.test',
-            'password' => bcrypt('password'),
+        $this->user = User::forceCreate([
+            'name'              => 'Tester Redeem',
+            'email'             => 'redeem@visueco.test',
+            'email_verified_at' => now(),
+            'password'          => bcrypt('password'),
         ]);
 
         $this->reward = Reward::create([

@@ -92,6 +92,24 @@ services:
     networks:
       - visueco-network
 
+  # ----------------------------------------------------------
+  #  PMA : phpMyAdmin (GUI Database)
+  # ----------------------------------------------------------
+  visueco-phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: visueco-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: visueco-db
+      PMA_USER: ${DB_USERNAME:-visueco_user}
+      PMA_PASSWORD: ${DB_PASSWORD:-secret}
+    networks:
+      - visueco-network
+    depends_on:
+      - visueco-db
+
 # ============================================================
 #  Named Volumes
 # ============================================================
